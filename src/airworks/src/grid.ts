@@ -56,11 +56,13 @@ function detach(location: Location) {
 
 export function tidy(root: Page[]) {
   for (const page of root) {
-    page.items = page.items.filter((item) => item.kind !== 'folder' || item.pages.some((child) => child.items.length));
-    for (const item of page.items) {
-      if (item.kind !== 'folder') continue;
+    page.items = page.items.flatMap((item): GridItem[] => {
+      if (item.kind !== 'folder') return [item];
+      const children = item.pages.flatMap((child) => child.items);
+      if (children.length < 2) return children.map((child) => Object.assign(child, { column: item.column, row: item.row }));
       while (item.pages.length > 1 && !item.pages[item.pages.length - 1].items.length) item.pages.pop();
-    }
+      return [item];
+    });
   }
 }
 

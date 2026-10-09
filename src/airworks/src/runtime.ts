@@ -1,6 +1,6 @@
 import { Access } from './access';
 import { setLocale } from './i18n';
-import type { AirWorksOptions, AppDefinition, RemoteManifest } from './types';
+import type { AirWorksOptions, AppDefinition, RemoteManifest, SearchProvider, SearchResult } from './types';
 
 const iconFolder = 'icons/';
 
@@ -8,6 +8,7 @@ export class Runtime extends EventTarget {
   options: AirWorksOptions = {};
   readonly apps = new Map<string, AppDefinition>();
   readonly access = new Access(() => this.options);
+  readonly searchProviders = new Map<string, SearchProvider>();
   private defaultAssetBase = new URL(iconFolder, import.meta.url).href;
 
   configure(options: AirWorksOptions) {
@@ -33,6 +34,21 @@ export class Runtime extends EventTarget {
 
   unregisterApp(id: string) {
     if (this.apps.delete(id)) this.dispatchEvent(new Event('apps'));
+  }
+
+  registerSearchProvider(provider: SearchProvider) {
+    if (!provider?.id || typeof provider.search !== 'function') throw new Error('A search provider needs an id and search().');
+    this.searchProviders.set(provider.id, provider);
+  }
+
+  async search(query: string, signal = new AbortController().signal): Promise<SearchResult[]> {
+    const context = { request: this.access.request.bind(this.access), access: this.access.snapshot, signal };
+    const appSearches = this.visibleApps().filter((app) => app.search).map(async (app) =>
+      (await app.search!(query, context)).map((hit): SearchResult => ({ icon: app.icon, ...hit, appId: app.id })));
+    const providers = [...this.searchProviders.values()].map(async (provider) => provider.search(query, context));
+    const settled = await Promise.allSettled([...appSearches, ...providers]);
+    return settled.flatMap((result) => result.status === 'fulfilled' ? result.value : [])
+      .filter((hit) => { const app = this.apps.get(hit.appId); return app && this.canOpen(app); });
   }
 
   canOpen(app: AppDefinition) { return this.access.canAll(app.requiredPermissions); }

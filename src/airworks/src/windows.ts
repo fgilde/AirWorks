@@ -265,6 +265,7 @@ export class WindowManager {
       if (!(event.target as Element).closest('.window-menu, .window-menu-trigger')) toggleMenu(false);
     });
     element.querySelector('.window-menu-trigger')!.addEventListener('click', () => toggleMenu());
+    element.querySelector('.window-menu-title')!.addEventListener('click', () => toggleMenu(false));
     element.querySelectorAll<HTMLElement>('[data-menu-action]').forEach((button) => button.addEventListener('click', () => {
       toggleMenu(false);
       this.host.menuAction(state, button.dataset.menuAction as MenuAction);

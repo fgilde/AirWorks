@@ -19,20 +19,28 @@ for (const provider of config.providers) AirWorks.registerAuthProvider(createOid
 
 AirWorks.registerPermission({ id: 'notes.use', title: 'Use notes', group: 'Notes' });
 
+AirWorks.registerSearchProvider({
+  id: 'server',
+  search: (query, { request, signal }) => request(`/search?q=${encodeURIComponent(query)}`, { signal }),
+});
+
 const escape = (value: unknown) => String(value).replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
 
 AirWorks.registerApps([
   {
     id: 'secure-reports', title: 'Secure reports', icon: 'fn-reporttable.png', accent: '#167d79', width: 840, height: 560,
     requiredPermissions: ['reports.read'],
-    async render({ host, request, can }) {
+    async render({ host, request, can, intent, onIntent }) {
       host.innerHTML = '<section class="secure-sample"><h2>Protected report</h2><p>Loading from the API…</p></section>';
       try {
         const rows = await request<Array<{ department: string; actual: number; plan: number }>>('/reports');
         host.innerHTML = `<section class="secure-sample"><h2>Protected report</h2>
           <p>Delivered by the .NET API after checking the <code>reports.read</code> permission.</p>
-          <table><thead><tr><th>Department</th><th>Actual</th><th>Plan</th></tr></thead><tbody>${rows.map((row) => `<tr><td>${escape(row.department)}</td><td>${row.actual.toLocaleString()}</td><td>${row.plan.toLocaleString()}</td></tr>`).join('')}</tbody></table>
+          <table><thead><tr><th>Department</th><th>Actual</th><th>Plan</th></tr></thead><tbody>${rows.map((row) => `<tr data-department="${escape(row.department)}"><td>${escape(row.department)}</td><td>${row.actual.toLocaleString()}</td><td>${row.plan.toLocaleString()}</td></tr>`).join('')}</tbody></table>
           <p>${can('reports.export') ? '<button>Export</button>' : '<small>Export requires <code>reports.export</code>.</small>'}</p></section>`;
+        const highlight = (department?: string) => host.querySelectorAll<HTMLElement>('tr[data-department]').forEach((row) => row.classList.toggle('highlight', row.dataset.department === department));
+        highlight(intent?.department);
+        onIntent((next) => highlight(next.department));
       } catch (error) {
         host.innerHTML = `<section class="secure-sample"><p class="error">${escape(error)}</p></section>`;
       }

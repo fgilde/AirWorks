@@ -11,7 +11,7 @@
       <div class="languages"><strong>EN</strong><a href="./de.html">DE</a></div>
       <nav>
         <a href="#install">Installation</a><a href="#quickstart">Quick start</a><a href="#options">Options</a><a href="#apps">Apps</a>
-        <a href="#remotes">Micro frontends</a><a href="#desktop">Desktop &amp; folders</a><a href="#auth">Authentication</a><a href="#profiles">User profiles</a>
+        <a href="#search">Search</a><a href="#remotes">Micro frontends</a><a href="#desktop">Desktop &amp; folders</a><a href="#auth">Authentication</a><a href="#profiles">User profiles</a>
         <a href="#access">Roles &amp; permissions</a><a href="#server">Server integration</a><a href="#aspire">.NET Aspire sample</a>
         <a href="#events">Events</a><a href="#i18n">Languages</a><a href="#api">API reference</a><a href="#develop">Develop &amp; deploy</a>
       </nav>
@@ -106,7 +106,7 @@ npm run build:package  # writes ../../package (airworks.js, airworks.css, icons,
           <article><h3>render</h3><p>Return an HTML string, a DOM node, or nothing and write into <code>context.host</code>. May be async. AirWorks never re-renders a window body, so state, custom elements and framework roots (React, Vue, Svelte, Angular elements) stay alive until the window closes.</p></article>
           <article><h3>url</h3><p>Loads the app in an iframe: full isolation for independently deployed micro frontends. The iframe handles its own authentication (single sign-on with the same identity provider works).</p></article>
           <article><h3>entry</h3><p>An ES module URL that is imported on first open. Its default export (or <code>exportName</code>) is a render function or a partial app definition.</p></article>
-          <article><h3>context</h3><p><code>host</code>, <code>appId</code>, <code>windowId</code>, <code>session</code>, <code>access</code>, <code>can(permission)</code>, <code>request(path, init)</code>, <code>onClose(cb)</code>, <code>setTitle(text)</code>, <code>setAppearance({ title, accent, icon })</code> and <code>link</code> (the shortcut the window was opened from, with its <code>data</code>).</p></article>
+          <article><h3>context</h3><p><code>host</code>, <code>appId</code>, <code>windowId</code>, <code>session</code>, <code>access</code>, <code>can(permission)</code>, <code>request(path, init)</code>, <code>onClose(cb)</code>, <code>setTitle(text)</code>, <code>setAppearance({ title, accent, icon })</code>, <code>intent</code>, <code>onIntent(cb)</code> and <code>link</code> (the shortcut the window was opened from, with its <code>data</code>).</p></article>
         </div>
         <p>Every window gets the menu actions <em>create/update shortcut</em>, <em>duplicate</em> and <em>open in browser</em> (a pop-out that shows just this app via <code>?app=&lt;id&gt;</code>). Apps add their own entries with <code>menu: [{ id, title, icon, run(context) }]</code>. With <code>multiple: true</code> every shortcut opens its own window instead of focusing the existing one. Built-in apps: <code>airworks.settings</code>, <code>airworks.identity</code>, <code>airworks.weblink</code> and <code>airworks.docs</code>. <code>AirWorks.unregisterApp(id)</code> removes an app.</p>
         <h3>Web links</h3>
@@ -118,6 +118,28 @@ render: ({ host, onClose }) =&gt; {
   root.render(&lt;Orders /&gt;);
   onClose(() =&gt; root.unmount());
 }</code></pre>
+      </section>
+
+      <section id="search"><div class="section-kicker">04b · Discovery</div><h2>Global search</h2>
+        <p>The search in the taskbar finds apps and content. Apps contribute content with <code>search</code>; anything else (typically your server) registers a search provider. Results open their app with an <em>intent</em> describing what to show.</p>
+        <pre><code>AirWorks.registerApp({
+  id: "orders", title: "Orders", icon: "fn-reporttable.png",
+  search: (query) =&gt; orders
+    .filter((order) =&gt; order.customer.toLowerCase().includes(query))
+    .map((order) =&gt; ({ title: order.number, description: order.customer, intent: { order: order.id } })),
+  render: ({ host, intent, onIntent }) =&gt; {
+    show(intent?.order);                         // opened from a search result
+    onIntent((next) =&gt; show(next.order));        // window already open, new result picked
+  },
+});
+
+AirWorks.registerSearchProvider({
+  id: "server",
+  search: (query, { request, signal }) =&gt; request(`/search?q=${encodeURIComponent(query)}`, { signal }),
+});                                              // returns [{ title, description?, icon?, appId, intent? }]
+
+AirWorks.openApp("orders", { order: "4711" });   // same intent from code</code></pre>
+        <p>Search starts at two characters, waits 200 ms after typing and cancels outdated requests through <code>signal</code>. Results for apps the user may not open are dropped. The demo's key ratios and the Aspire sample's server search (reports, users) use this.</p>
       </section>
 
       <section id="remotes"><div class="section-kicker">05 · Composition</div><h2>Micro frontends</h2>
@@ -150,7 +172,7 @@ await AirWorks.loadRemote({ apps: [/* inline manifest */] });</code></pre>
           <li><strong>App on folder</strong> – hover ~0.65 s and the folder opens, then drop on an exact cell; dropping right away puts it in the first free cell.</li>
           <li><strong>Occupied cell</strong> in a folder, or a folder on anything – the two swap.</li>
           <li><strong>Rest at an edge</strong> – switches to the previous/next page and keeps going while you stay; past the last page a new page appears (removed again if it stays empty).</li>
-          <li><strong>Drag out of a folder</strong> – leave the folder with the pointer and it closes, drop on the webtop. Empty folders disappear.</li>
+          <li><strong>Drag out of a folder</strong> – leave the folder with the pointer and it closes, drop on the webtop. When only one app is left, the folder dissolves and that app takes its place.</li>
           <li><strong>Trash</strong> – while you drag an existing shortcut or folder, a trash bin appears at the bottom. Drop on it to delete; a folder is deleted with its content. Windows linked to a deleted shortcut keep running.</li>
           <li>Drag apps from the start menu onto any webtop or folder. Double-click a label or press <kbd>F2</kbd> to rename.</li>
         </ul>
@@ -307,7 +329,8 @@ AirWorks.configure({ locale: "fr" });</code></pre>
           <tr><td><code>configure(options)</code></td><td>See <a href="#options">options</a>.</td></tr>
           <tr><td><code>registerApp(app)</code>, <code>registerApps(apps)</code>, <code>unregisterApp(id)</code></td><td>Manage apps. Duplicate ids throw.</td></tr>
           <tr><td><code>loadRemote(urlOrManifest)</code></td><td>Load a micro-frontend manifest.</td></tr>
-          <tr><td><code>openApp(id)</code></td><td>Open (or focus) an app; returns <code>false</code> if unknown or not permitted.</td></tr>
+          <tr><td><code>openApp(id, intent?)</code></td><td>Open (or focus) an app; returns <code>false</code> if unknown or not permitted.</td></tr>
+          <tr><td><code>registerSearchProvider(p)</code>, <code>search(query)</code></td><td>Global content search.</td></tr>
           <tr><td><code>registerPermission(s)</code>, <code>can(id)</code>, <code>access</code>, <code>refreshAccess()</code></td><td>Permissions.</td></tr>
           <tr><td><code>registerAuthProvider(p)</code>, <code>login(id, values?)</code>, <code>logout()</code>, <code>setSession(s)</code>, <code>session</code>, <code>showLogin()</code></td><td>Authentication.</td></tr>
           <tr><td><code>request(path, init?)</code></td><td>Authenticated fetch.</td></tr>

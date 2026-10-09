@@ -55,12 +55,26 @@ api.MapPut("/profile", (ClaimsPrincipal user, JsonElement profile) =>
     return Results.NoContent();
 });
 
-api.MapGet("/reports", () => new[]
+var reports = new[]
 {
     new { department = "North", actual = 1_284_000, plan = 1_200_000 },
     new { department = "South", actual = 1_092_000, plan = 1_150_000 },
     new { department = "International", actual = 1_736_000, plan = 1_600_000 },
-}).RequirePermission("reports.read");
+};
+api.MapGet("/reports", () => reports).RequirePermission("reports.read");
+
+api.MapGet("/search", (string q, ClaimsPrincipal user, IdentityService identity) =>
+{
+    var permissions = identity.PermissionsOf(user);
+    var hits = new List<object>();
+    if (permissions.Contains("reports.read"))
+        hits.AddRange(reports.Where(report => report.department.Contains(q, StringComparison.OrdinalIgnoreCase))
+            .Select(report => new { title = $"Report {report.department}", description = $"Actual {report.actual:N0} · Plan {report.plan:N0}", appId = "secure-reports", intent = new { department = report.department } }));
+    if (permissions.Contains(IdentityService.ManageIdentity))
+        hits.AddRange(identity.Users.Values.Where(user => user.UserName.Contains(q, StringComparison.OrdinalIgnoreCase) || user.DisplayName.Contains(q, StringComparison.OrdinalIgnoreCase))
+            .Select(user => new { title = user.DisplayName, description = $"User {user.UserName}", appId = "airworks.identity", intent = new { user = user.Id } }));
+    return hits;
+});
 
 var admin = api.MapGroup("/identity").RequirePermission(IdentityService.ManageIdentity);
 admin.MapGet("/users", (IdentityService identity) => identity.Users.Values.OrderBy(user => user.UserName));

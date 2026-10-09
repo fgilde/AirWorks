@@ -1,7 +1,7 @@
 import './styles.css';
 import { AirDesktop, VERSION } from './desktop';
 import { runtime } from './runtime';
-import type { AccessSnapshot, AirWorksOptions, AppDefinition, AuthProvider, PermissionDefinition, RemoteManifest, Session } from './types';
+import type { AccessSnapshot, AirWorksOptions, AppDefinition, AuthProvider, Intent, PermissionDefinition, RemoteManifest, SearchProvider, Session } from './types';
 
 export type * from './types';
 export { createOidcProvider, type OidcOptions, type TokenSet } from './oidc';
@@ -34,7 +34,9 @@ export const AirWorks = {
   get access(): AccessSnapshot { return runtime.access.snapshot; },
   can: (permission: string) => runtime.access.can(permission),
   request: <T = unknown>(path: string, init?: RequestInit) => runtime.access.request<T>(path, init),
-  openApp: (appId: string) => desktop()?.launch(appId) ?? false,
+  openApp: (appId: string, intent?: Intent) => desktop()?.launch(appId, { intent }) ?? false,
+  registerSearchProvider: (provider: SearchProvider) => runtime.registerSearchProvider(provider),
+  search: (query: string) => runtime.search(query),
   showLogin: () => desktop()?.showLogin(true),
   on(event: AirWorksEvent, handler: (detail: unknown) => void) {
     const listener = (e: Event) => handler((e as CustomEvent).detail);

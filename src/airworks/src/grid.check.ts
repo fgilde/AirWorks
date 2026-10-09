@@ -22,11 +22,13 @@ assert.deepEqual([locate(root, 'b')!.item.column, locate(root, 'c')!.item.column
 
 assert.equal(drop(root, folder, { ...inFolder, cell: { column: 3, row: 2 } }, 'F'), false);
 
-for (const [index, child] of ['a', 'b', 'c'].entries()) assert.ok(drop(root, locate(root, child)!.item, { ...at(1), cell: { column: index, row: 1 } }, 'F'));
-assert.equal(root[0].items.length, 0);
-assert.equal(root[1].items.length, 3);
+assert.ok(drop(root, locate(root, 'a')!.item, { ...at(1), cell: { column: 0, row: 1 } }, 'F'));
+assert.equal(locate(root, 'c')!.folder, folder);
+assert.ok(drop(root, locate(root, 'b')!.item, { ...at(1), cell: { column: 1, row: 1 } }, 'F'));
+assert.equal(root[0].items.some((item) => item.kind === 'folder'), false);
+assert.deepEqual([locate(root, 'c')!.page, locate(root, 'c')!.item.column, locate(root, 'c')!.item.row], [0, 1, 0]);
 
-root[0].items.push({ id: 'd', kind: 'folder', label: 'd', column: 4, row: 2, pages: [{ id: 'x', items: [app('e', 0)] }] });
+root[0].items.push({ id: 'd', kind: 'folder', label: 'd', column: 4, row: 2, pages: [{ id: 'x', items: [app('e', 0), app('f', 1)] }] });
 assert.ok(drop(root, locate(root, 'd')!.item, { ...at(1), cell: { column: 0, row: 1 } }, 'F'));
 assert.equal(locate(root, 'a')!.page, 0);
 assert.equal(locate(root, 'd')!.page, 1);

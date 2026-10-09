@@ -11,7 +11,7 @@
       <div class="languages"><a href="./">EN</a><strong>DE</strong></div>
       <nav>
         <a href="#install">Installation</a><a href="#quickstart">Schnellstart</a><a href="#options">Optionen</a><a href="#apps">Apps</a>
-        <a href="#remotes">Micro-Frontends</a><a href="#desktop">Desktop &amp; Ordner</a><a href="#auth">Anmeldung</a><a href="#profiles">Benutzerprofile</a>
+        <a href="#search">Suche</a><a href="#remotes">Micro-Frontends</a><a href="#desktop">Desktop &amp; Ordner</a><a href="#auth">Anmeldung</a><a href="#profiles">Benutzerprofile</a>
         <a href="#access">Rollen &amp; Rechte</a><a href="#server">Serveranbindung</a><a href="#aspire">.NET-Aspire-Beispiel</a>
         <a href="#events">Events</a><a href="#i18n">Sprachen</a><a href="#api">API-Referenz</a><a href="#develop">Entwickeln &amp; deployen</a>
       </nav>
@@ -106,7 +106,7 @@ npm run build:package  # schreibt ../../package (airworks.js, airworks.css, icon
           <article><h3>render</h3><p>Gibt einen HTML-String oder DOM-Knoten zurück oder schreibt direkt in <code>context.host</code>. Darf async sein. AirWorks rendert einen Fensterinhalt nie neu – Zustand, Custom Elements und Framework-Roots (React, Vue, Svelte, Angular Elements) bleiben bis zum Schließen erhalten.</p></article>
           <article><h3>url</h3><p>Lädt die App in einem iframe: vollständige Isolation für unabhängig deployte Micro-Frontends. Das iframe kümmert sich selbst um Authentifizierung (Single Sign-on mit demselben Identity Provider funktioniert).</p></article>
           <article><h3>entry</h3><p>URL eines ES-Moduls, das beim ersten Öffnen importiert wird. Sein Default-Export (oder <code>exportName</code>) ist eine Render-Funktion oder eine Teil-App-Definition.</p></article>
-          <article><h3>Kontext</h3><p><code>host</code>, <code>appId</code>, <code>windowId</code>, <code>session</code>, <code>access</code>, <code>can(permission)</code>, <code>request(path, init)</code>, <code>onClose(cb)</code>, <code>setTitle(text)</code>, <code>setAppearance({ title, accent, icon })</code> und <code>link</code> (die Verknüpfung, aus der das Fenster geöffnet wurde, mit ihren <code>data</code>).</p></article>
+          <article><h3>Kontext</h3><p><code>host</code>, <code>appId</code>, <code>windowId</code>, <code>session</code>, <code>access</code>, <code>can(permission)</code>, <code>request(path, init)</code>, <code>onClose(cb)</code>, <code>setTitle(text)</code>, <code>setAppearance({ title, accent, icon })</code>, <code>intent</code>, <code>onIntent(cb)</code> und <code>link</code> (die Verknüpfung, aus der das Fenster geöffnet wurde, mit ihren <code>data</code>).</p></article>
         </div>
         <p>Jedes Fenster hat die Menüaktionen <em>Verknüpfung erstellen/aktualisieren</em>, <em>Duplizieren</em> und <em>Im Browser öffnen</em> (ein Pop-out, das nur diese App über <code>?app=&lt;id&gt;</code> zeigt). Eigene Einträge ergänzt eine App mit <code>menu: [{ id, title, icon, run(context) }]</code>. Mit <code>multiple: true</code> öffnet jede Verknüpfung ein eigenes Fenster, statt das vorhandene zu fokussieren. Eingebaute Apps: <code>airworks.settings</code>, <code>airworks.identity</code>, <code>airworks.weblink</code> und <code>airworks.docs</code>. <code>AirWorks.unregisterApp(id)</code> entfernt eine App.</p>
         <h3>Web-Verknüpfungen</h3>
@@ -118,6 +118,28 @@ render: ({ host, onClose }) =&gt; {
   root.render(&lt;Orders /&gt;);
   onClose(() =&gt; root.unmount());
 }</code></pre>
+      </section>
+
+      <section id="search"><div class="section-kicker">04b · Finden</div><h2>Globale Suche</h2>
+        <p>Die Suche in der Taskleiste findet Apps und Inhalte. Apps liefern Inhalte über <code>search</code>; alles andere (typischerweise dein Server) registriert einen Suchanbieter. Treffer öffnen ihre App mit einem <em>Intent</em>, der beschreibt, was gezeigt werden soll.</p>
+        <pre><code>AirWorks.registerApp({
+  id: "orders", title: "Aufträge", icon: "fn-reporttable.png",
+  search: (query) =&gt; orders
+    .filter((order) =&gt; order.customer.toLowerCase().includes(query))
+    .map((order) =&gt; ({ title: order.number, description: order.customer, intent: { order: order.id } })),
+  render: ({ host, intent, onIntent }) =&gt; {
+    show(intent?.order);                         // aus einem Suchtreffer geöffnet
+    onIntent((next) =&gt; show(next.order));        // Fenster schon offen, neuer Treffer gewählt
+  },
+});
+
+AirWorks.registerSearchProvider({
+  id: "server",
+  search: (query, { request, signal }) =&gt; request(`/search?q=${encodeURIComponent(query)}`, { signal }),
+});                                              // liefert [{ title, description?, icon?, appId, intent? }]
+
+AirWorks.openApp("orders", { order: "4711" });   // derselbe Intent aus Code</code></pre>
+        <p>Die Suche startet ab zwei Zeichen, wartet 200 ms nach der Eingabe und bricht veraltete Anfragen über <code>signal</code> ab. Treffer zu Apps ohne Berechtigung werden verworfen. Die Kennzahlen der Demo und die Serversuche des Aspire-Beispiels (Berichte, Benutzer) nutzen das.</p>
       </section>
 
       <section id="remotes"><div class="section-kicker">05 · Komposition</div><h2>Micro-Frontends</h2>
@@ -150,7 +172,7 @@ await AirWorks.loadRemote({ apps: [/* Manifest inline */] });</code></pre>
           <li><strong>App auf Ordner</strong> – ca. 0,65 s verweilen und der Ordner öffnet sich, dann auf eine genaue Zelle ablegen; sofortiges Ablegen nutzt die erste freie Zelle.</li>
           <li><strong>Belegte Zelle</strong> im Ordner, oder ein Ordner auf irgendetwas – die beiden tauschen.</li>
           <li><strong>Am Rand verweilen</strong> – wechselt zur vorherigen/nächsten Seite, solange du dort bleibst, immer weiter; hinter der letzten Seite entsteht eine neue (bleibt sie leer, verschwindet sie wieder).</li>
-          <li><strong>Aus dem Ordner ziehen</strong> – den Ordner mit dem Zeiger verlassen, er schließt sich, auf dem Webtop ablegen. Leere Ordner verschwinden.</li>
+          <li><strong>Aus dem Ordner ziehen</strong> – den Ordner mit dem Zeiger verlassen, er schließt sich, auf dem Webtop ablegen. Bleibt nur eine App übrig, löst sich der Ordner auf und die App nimmt seinen Platz ein.</li>
           <li><strong>Papierkorb</strong> – beim Ziehen einer vorhandenen Verknüpfung oder eines Ordners erscheint unten ein Papierkorb. Darauf ablegen löscht; ein Ordner wird samt Inhalt gelöscht. Fenster, die mit der Verknüpfung verbunden waren, laufen weiter.</li>
           <li>Apps aus dem Startmenü auf jeden Webtop oder Ordner ziehen. Doppelklick auf eine Beschriftung oder <kbd>F2</kbd> benennt um.</li>
         </ul>
@@ -307,7 +329,8 @@ AirWorks.configure({ locale: "fr" });</code></pre>
           <tr><td><code>configure(options)</code></td><td>Siehe <a href="#options">Optionen</a>.</td></tr>
           <tr><td><code>registerApp(app)</code>, <code>registerApps(apps)</code>, <code>unregisterApp(id)</code></td><td>Apps verwalten. Doppelte IDs werfen einen Fehler.</td></tr>
           <tr><td><code>loadRemote(urlOrManifest)</code></td><td>Micro-Frontend-Manifest laden.</td></tr>
-          <tr><td><code>openApp(id)</code></td><td>App öffnen (oder fokussieren); <code>false</code>, wenn unbekannt oder nicht erlaubt.</td></tr>
+          <tr><td><code>openApp(id, intent?)</code></td><td>App öffnen (oder fokussieren); <code>false</code>, wenn unbekannt oder nicht erlaubt.</td></tr>
+          <tr><td><code>registerSearchProvider(p)</code>, <code>search(query)</code></td><td>Globale Inhaltssuche.</td></tr>
           <tr><td><code>registerPermission(s)</code>, <code>can(id)</code>, <code>access</code>, <code>refreshAccess()</code></td><td>Rechte.</td></tr>
           <tr><td><code>registerAuthProvider(p)</code>, <code>login(id, values?)</code>, <code>logout()</code>, <code>setSession(s)</code>, <code>session</code>, <code>showLogin()</code></td><td>Anmeldung.</td></tr>
           <tr><td><code>request(path, init?)</code></td><td>Authentifizierter fetch.</td></tr>

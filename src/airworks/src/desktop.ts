@@ -6,7 +6,7 @@ import { LoginView } from './login';
 import { localProfileStore, type Profile, type SavedWindow } from './profile';
 import { runtime } from './runtime';
 import type { Shortcut } from './grid';
-import type { AppContext, AppDefinition } from './types';
+import type { AppContext, AppDefinition, Intent } from './types';
 import { esc, readJson, writeJson } from './util';
 import { WindowManager, type MenuAction, type WindowState, type WorkArea } from './windows';
 import { appearanceOf, MAX_WEBTOPS, Workspace } from './workspace';
@@ -23,6 +23,9 @@ export class AirDesktop extends HTMLElement {
   private pendingWindows: SavedWindow[] = [];
   private cleanups = new Map<number, Array<() => void>>();
   private contexts = new Map<number, AppContext>();
+  private intents = new Map<number, Array<(intent: Intent) => void>>();
+  private nextIntent?: Intent;
+  private searchAbort?: AbortController;
   private startOpen = false;
   private pilotOpen = false;
   private standalone = false;
@@ -57,7 +60,7 @@ export class AirDesktop extends HTMLElement {
       previewDelay: () => this.settings.instantPreview ? 0 : 250,
       taskbarSide: () => this.settings.taskbarPosition,
       mount: (state, body) => void this.mount(state, body),
-      unmount: (state) => { this.cleanups.get(state.id)?.forEach((cleanup) => cleanup()); this.cleanups.delete(state.id); this.contexts.delete(state.id); },
+      unmount: (state) => { this.cleanups.get(state.id)?.forEach((cleanup) => cleanup()); this.cleanups.delete(state.id); this.contexts.delete(state.id); this.intents.delete(state.id); },
       menuAction: (state, action) => this.menuAction(state, action),
       changed: () => { this.saveProfile(); if (this.pilotOpen) this.renderPilot(); },
     });
@@ -110,7 +113,7 @@ export class AirDesktop extends HTMLElement {
     } else void this.loadProfile();
   }
 
-  launch(appId: string, options: { linkId?: string; forceNew?: boolean } = {}) {
+  launch(appId: string, options: { linkId?: string; forceNew?: boolean; intent?: Intent } = {}) {
     const app = runtime.apps.get(appId);
     return app ? Boolean(this.open(app, options)) : false;
   }
@@ -320,13 +323,36 @@ export class AirDesktop extends HTMLElement {
   }
 
   private renderSearch(query: string) {
-    const matches = runtime.visibleApps().filter((app) => app.title.toLowerCase().includes(query.toLowerCase()));
+    const text = query.trim().toLowerCase();
+    const apps = runtime.visibleApps().filter((app) => app.title.toLowerCase().includes(text));
     const results = this.$('.search-results');
-    results.innerHTML = matches.map((app) => `<button class="search-result" data-app="${esc(app.id)}" style="--accent:${esc(app.accent ?? 'var(--system)')}"><span class="search-icon"><img src="${esc(runtime.asset(app.icon))}" alt=""/></span><span>${esc(app.title)}</span></button>`).join('');
-    results.querySelectorAll<HTMLElement>('.search-result').forEach((result) => result.addEventListener('click', () => this.launch(result.dataset.app!)));
+    const item = (appId: string, title: string, icon: string, description?: string, intent?: Intent) => {
+      const app = runtime.apps.get(appId);
+      const button = document.createElement('button');
+      button.className = 'search-result';
+      button.style.setProperty('--accent', app?.accent ?? 'var(--system)');
+      button.innerHTML = `<span class="search-icon"><img src="${esc(runtime.asset(icon))}" alt=""/></span><span class="search-text"><strong>${esc(title)}</strong>${description ? `<small>${esc(description)}</small>` : ''}</span>`;
+      button.addEventListener('click', () => this.launch(appId, { intent }));
+      return button;
+    };
+    const section = (title: string) => Object.assign(document.createElement('h4'), { textContent: title });
+    results.replaceChildren(...(apps.length ? [section(t('apps')), ...apps.map((app) => item(app.id, app.title, app.icon))] : []));
+    this.searchAbort?.abort();
+    if (text.length < 2) return;
+    const abort = this.searchAbort = new AbortController();
+    const pending = section(t('searching'));
+    results.append(pending);
+    setTimeout(async () => {
+      if (abort.signal.aborted) return;
+      const hits = await runtime.search(text, abort.signal).catch(() => []);
+      if (abort.signal.aborted) return;
+      pending.textContent = t('content');
+      if (!hits.length) pending.remove();
+      results.append(...hits.slice(0, 30).map((hit) => item(hit.appId, hit.title, hit.icon ?? runtime.apps.get(hit.appId)!.icon, hit.description, hit.intent)));
+    }, 200);
   }
 
-  private open(app: AppDefinition, options: { linkId?: string; forceNew?: boolean; geometry?: Partial<SavedWindow> } = {}) {
+  private open(app: AppDefinition, options: { linkId?: string; forceNew?: boolean; intent?: Intent; geometry?: Partial<SavedWindow> } = {}) {
     if (!runtime.canOpen(app)) {
       this.emit('airworks:access-denied', { appId: app.id, requiredPermissions: app.requiredPermissions ?? [] });
       return undefined;
@@ -339,7 +365,10 @@ export class AirDesktop extends HTMLElement {
     }
     const shortcut = this.workspace.shortcut(options.linkId);
     const appearance = shortcut?.data ? { title: shortcut.label, ...appearanceOf(shortcut, app) } : undefined;
+    this.nextIntent = options.intent;
     const state = this.windows.open(app, { ...options, appearance });
+    if (this.nextIntent) this.intents.get(state.id)?.forEach((callback) => callback(this.nextIntent!));
+    this.nextIntent = undefined;
     this.emit('airworks:app-opened', { appId: app.id, windowId: state.id });
     return state;
   }
@@ -349,7 +378,13 @@ export class AirDesktop extends HTMLElement {
     this.cleanups.set(state.id, cleanups);
     const access = runtime.access;
     const workspace = this.workspace;
+    const intent = this.nextIntent;
+    this.nextIntent = undefined;
+    const listeners: Array<(intent: Intent) => void> = [];
+    this.intents.set(state.id, listeners);
     const context: AppContext = {
+      intent,
+      onIntent: (callback) => listeners.push(callback),
       host: body, appId: state.app.id, windowId: state.id,
       get session() { return access.session; },
       get access() { return access.snapshot; },

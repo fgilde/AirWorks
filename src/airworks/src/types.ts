@@ -67,6 +67,23 @@ export type AuthProvider = {
   restore?: () => Promise<Session | undefined> | Session | undefined;
 };
 
+export type Intent = Record<string, string>;
+
+export type SearchHit = { title: string; description?: string; icon?: string; intent?: Intent };
+
+export type SearchResult = SearchHit & { appId: string };
+
+export type SearchContext = {
+  request: <T = unknown>(path: string, init?: RequestInit) => Promise<T>;
+  access: AccessSnapshot;
+  signal: AbortSignal;
+};
+
+export type SearchProvider = {
+  id: string;
+  search: (query: string, context: SearchContext) => Promise<SearchResult[]> | SearchResult[];
+};
+
 export type LinkInfo = { id: string; label: string; data: Record<string, string> };
 
 export type Appearance = { title?: string; accent?: string; icon?: string };
@@ -85,6 +102,8 @@ export type AppContext = {
   setTitle: (title: string) => void;
   setAppearance: (appearance: Appearance) => void;
   link?: LinkInfo;
+  intent?: Intent;
+  onIntent: (callback: (intent: Intent) => void) => void;
 };
 
 export type AppDefinition = {
@@ -97,6 +116,7 @@ export type AppDefinition = {
   requiredPermissions?: string[];
   hidden?: boolean;
   multiple?: boolean;
+  search?: (query: string, context: SearchContext) => Promise<SearchHit[]> | SearchHit[];
   menu?: WindowMenuItem[];
   render?: (context: AppContext) => string | Node | void | Promise<string | Node | void>;
   url?: string;

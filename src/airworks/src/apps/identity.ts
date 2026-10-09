@@ -12,9 +12,9 @@ export function createIdentityApp(store: () => IdentityStore | undefined, access
     width: 860,
     height: 560,
     requiredPermissions: [MANAGE_IDENTITY],
-    render: ({ host }) => {
-      let tab: 'users' | 'roles' = 'users';
-      let editing: string | undefined;
+    render: ({ host, intent, onIntent }) => {
+      let tab: 'users' | 'roles' = intent?.role ? 'roles' : 'users';
+      let editing: string | undefined = intent?.user ?? intent?.role;
       let message = '';
 
       const render = async () => {
@@ -76,6 +76,11 @@ export function createIdentityApp(store: () => IdentityStore | undefined, access
           }));
         });
       };
+      onIntent((next) => {
+        tab = next.role ? 'roles' : 'users';
+        editing = next.user ?? next.role;
+        void render();
+      });
       void render();
     },
   };
