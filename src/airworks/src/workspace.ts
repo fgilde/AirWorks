@@ -181,10 +181,13 @@ export class Workspace {
     input.value = item.label;
     input.ariaLabel = t('rename');
     host.replaceChildren(input);
+    const icon = host.closest<HTMLElement>('.desktop-icon');
+    icon?.classList.add('renaming');
     let done = false;
     const finish = (save: boolean) => {
       if (done) return;
       done = true;
+      icon?.classList.remove('renaming');
       const value = input.value.trim();
       if (save && value) item.label = value;
       this.render();
@@ -193,6 +196,8 @@ export class Workspace {
       onDone?.(save && Boolean(value));
     };
     input.addEventListener('pointerdown', (event) => event.stopPropagation());
+    input.addEventListener('click', (event) => event.stopPropagation());
+    input.addEventListener('dblclick', (event) => event.stopPropagation());
     input.addEventListener('keydown', (event) => {
       event.stopPropagation();
       if (event.key === 'Enter') finish(true);
@@ -270,13 +275,24 @@ export class Workspace {
       element.innerHTML = `<span class="icon-tile"><img src="${esc(this.host.asset(icon))}" alt="" /></span><span class="icon-label">${esc(item.label)}</span>`;
     }
     element.querySelectorAll('img').forEach((image) => image.addEventListener('error', () => { image.src = this.host.asset(app?.icon ?? 'icon-folder.png'); }, { once: true }));
+    let renameTimer: number | undefined;
     element.addEventListener('click', (event) => {
+      const target = event.target as Element;
+      if (target.closest('input')) return;
+      const wasSelected = this.selectedId === item.id;
       this.select(item.id);
-      if (!(event.target as Element).closest('.icon-tile')) return;
-      if (item.kind === 'folder') this.openFolderById(item.id);
-      else if (app) { this.host.open(app, item.id); this.closeFolder(); }
+      if (target.closest('.icon-tile')) {
+        if (item.kind === 'folder') this.openFolderById(item.id);
+        else if (app) { this.host.open(app, item.id); this.closeFolder(); }
+        return;
+      }
+      if (wasSelected && event.detail === 1) renameTimer = window.setTimeout(() => this.rename(item.id), 450);
     });
-    element.querySelector('.icon-label')!.addEventListener('dblclick', (event) => { event.stopPropagation(); this.rename(item.id); });
+    element.addEventListener('dblclick', (event) => {
+      if ((event.target as Element).closest('.icon-tile, input')) return;
+      clearTimeout(renameTimer);
+      this.rename(item.id);
+    });
     draggable(element, (session) => this.beginDrag(session, item));
     return element;
   }

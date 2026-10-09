@@ -35,7 +35,8 @@ button { color: inherit; }
 
 .desktop-icon, .app-icon { border: 0; background: transparent; cursor: default; text-align: center; }
 .desktop-icon { position: absolute; padding: 0; color: var(--desktop-foreground, white); text-shadow: 0 1px 3px rgba(0,0,0,.72); transition: left .25s, top .25s, opacity .25s, transform .25s; z-index: 1; }
-.desktop-icon:hover, .desktop-icon:focus { background: rgba(255,255,255,.18); outline: 1px solid rgba(255,255,255,.5); }
+.desktop-icon { outline: none; }
+.desktop-icon:hover, .desktop-icon:focus-visible { background: rgba(255,255,255,.18); outline: 1px solid rgba(255,255,255,.5); }
 .desktop-icon.selected { background: rgba(255,255,255,.15); outline: 2px solid rgba(255,255,255,.78); }
 .desktop-icon.drop-target:not(.folder) { background: rgba(255,255,255,.22); outline: 4px solid rgba(255,255,255,.2); }
 .desktop-icon.drop-target:not(.folder) .icon-tile { transform: scale(1.18); }
@@ -44,13 +45,16 @@ button { color: inherit; }
 .desktop-icon .icon-tile { width: 75%; height: 75%; margin-top: 12.5%; }
 .icon-tile img { position: absolute; inset: 0; max-width: 75%; max-height: 75%; margin: auto; object-fit: contain; }
 .desktop-icon:hover .icon-tile, .app-icon:hover .icon-tile { transform: scale(1.08); }
-.desktop-icon .icon-label { display: block; font-size: 12px; line-height: 15px; }
+.desktop-icon .icon-label { position: relative; display: block; min-height: 22px; padding: 3px 2px; font-size: 12px; line-height: 15px; cursor: text; }
+.desktop-icon.renaming, .desktop-icon.renaming:hover { z-index: 5; background: transparent; outline: none; }
+.desktop-icon.renaming .icon-tile { transform: none; }
 .desktop-icon .folder-tile { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 0; background: var(--background); box-shadow: 1px 1px 3px #666; }
 .folder-tile > span { position: relative; background: var(--accent); }
 .folder-tile > span img { position: absolute; inset: 0; width: 75%; height: 75%; margin: auto; object-fit: contain; }
 .grid-placeholder { position: absolute; z-index: 0; display: block; border: 4px solid rgba(0,0,0,.1); border-radius: 4px; background: rgba(255,255,255,.08); opacity: 0; transform: scale(.7); transition: left .2s, top .2s, opacity .2s, transform .2s; pointer-events: none; }
 .grid-placeholder.visible { opacity: 1; transform: scale(1); }
-.inline-label-editor { width: 94%; min-width: 48px; height: 21px; padding: 1px 3px; border: 1px solid currentColor; outline: 1px solid rgba(255,255,255,.75); background: rgba(0,0,0,.24); color: inherit; text-align: center; user-select: text; }
+.inline-label-editor { position: absolute; left: 50%; top: 0; width: max(100%, 150px); height: 24px; padding: 2px 6px; transform: translateX(-50%); border: 0; border-radius: 3px; outline: none; background: white; color: #1f2b3d; box-shadow: 0 0 0 2px var(--system), 0 4px 12px rgba(0,0,0,.35); font: inherit; font-size: 12px; text-align: center; text-shadow: none; user-select: text; }
+.folder-title .inline-label-editor { position: static; width: 100%; transform: none; font-size: 16px; }
 .link-created { animation: home-link-pulse .5s ease-in-out 1, save-glow 1s ease-out 1; }
 
 .homescreen-arrow { position: fixed; z-index: 5; top: 40px; bottom: 0; width: 29px; border: 0; padding: 0; background: transparent; opacity: 0; visibility: hidden; transition: opacity .4s; }
