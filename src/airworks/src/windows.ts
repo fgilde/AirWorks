@@ -271,8 +271,8 @@ export class WindowManager {
     const actions: Array<[MenuAction, string, string]> = [
       ['update', t('updateLink'), 'action-updateDesktopLink.png'],
       ...(standalone ? [] : [['create', t('createLink'), 'action-createDesktopLink.png']] as Array<[MenuAction, string, string]>),
-      ...(standalone || !state.app.singleInstance ? [['duplicate', t('duplicate'), 'action-copy.png']] as Array<[MenuAction, string, string]> : []),
-      ...(standalone ? [] : [['browser', t('openInBrowser'), 'fn-userweblink.png']] as Array<[MenuAction, string, string]>),
+      ...(!standalone && !state.app.singleInstance ? [['duplicate', t('duplicate'), 'action-copy.png']] as Array<[MenuAction, string, string]> : []),
+      ['browser', t('openInBrowser'), 'fn-userweblink.png'],
       ...(state.app.menu ?? []).map((item): [MenuAction, string, string] => [`app:${item.id}`, item.title, item.icon]),
     ];
     element.innerHTML = `

@@ -441,15 +441,15 @@ export class AirDesktop extends HTMLElement {
       if (item && context) item.run(context);
       return;
     }
-    if (action === 'duplicate' && !this.standalone) { this.open(state.app, { linkId: state.linkId, forceNew: true, intent: state.intent }); return; }
+    if (action === 'duplicate') { this.open(state.app, { linkId: state.linkId, forceNew: true, intent: state.intent }); return; }
     if (action === 'browser' && context?.link?.data.url) { window.open(context.link.data.url, '_blank', 'noopener'); return; }
-    if (action === 'browser' || action === 'duplicate') {
+    if (action === 'browser') {
       const url = new URL(location.href);
       url.search = '';
       url.searchParams.set('app', state.app.id);
       if (state.linkId) url.searchParams.set('link', state.linkId);
       if (state.intent) url.searchParams.set('intent', JSON.stringify(state.intent));
-      window.open(url, `airworks-${state.id}`, `popup=yes,width=${Math.max(720, state.width)},height=${Math.max(520, state.height)}`);
+      window.open(url, `airworks-${crypto.randomUUID()}`, `popup=yes,width=${Math.max(720, state.width)},height=${Math.max(520, state.height)}`);
       return;
     }
     if (action === 'update' && state.linkId) {
