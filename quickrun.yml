@@ -1,0 +1,28 @@
+name: AirWorks
+description: Runs the .NET Aspire sample with Keycloak, the secured API and the AirWorks web desktop. Sign in as admin / admin or demo / demo.
+icon: https://fgilde.github.io/AirWorks/icons/logo-air.png
+docs: https://fgilde.github.io/AirWorks/#aspire
+repository: https://github.com/fgilde/AirWorks
+
+requires:
+  - tool: dotnet
+    version: ">=10.0"
+    install: https://dot.net
+  - tool: node
+    version: ">=22.18"
+    install: https://nodejs.org
+  - tool: docker
+    install: https://www.docker.com/products/docker-desktop
+
+setup:
+  - run: npm ci --no-audit --no-fund
+    cwd: src/airworks
+  - run: dotnet dev-certs https --trust
+    continueOnError: true
+
+tasks:
+  - name: aspire
+    run: dotnet run --project samples/AirWorks.Demo/AirWorks.Demo.AppHost
+    readyWhen:
+      http: http://localhost:5177
+    open: true

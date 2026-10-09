@@ -47,3 +47,4 @@ th, td { padding: 10px 14px; text-align: left; vertical-align: top; border-botto
 th { color: var(--ink); background: #eef2f6; }
 kbd { padding: 1px 6px; border: 1px solid #b8c2cf; border-bottom-width: 2px; background: white; font-size: 12px; }
 .hero-actions { flex-wrap: wrap; }
+.connect-widgets { position: fixed; width: 0; height: 0; overflow: hidden; }

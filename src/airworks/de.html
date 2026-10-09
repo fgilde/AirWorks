@@ -308,6 +308,8 @@ api.MapGet("/reports", GetReports).RequirePermission("reports.read");
 
       <section id="aspire"><div class="section-kicker">10 · Full Stack</div><h2>.NET-Aspire-Beispiel</h2>
         <p><code>samples/AirWorks.Demo</code> ist ein vollständig abgesichertes Setup: Aspire-AppHost, Keycloak (Realm-Import), eine ASP.NET-Core-API mit JWT-Prüfung und Rechteprüfung sowie ein Web-Host, der den AirWorks-Client (als Paket eingebunden) ausliefert und <code>/api</code> weiterleitet.</p>
+        <p><quickrun-btn repo="fgilde/AirWorks">Mit QuickRun starten</quickrun-btn></p>
+        <p>Mit <a href="https://quickrun.org">QuickRun</a> wird das Sample per Klick aus <code>quickrun.yml</code> geklont, gebaut und gestartet. Oder von Hand:</p>
         <pre><code>cd samples/AirWorks.Demo
 dotnet run --project AirWorks.Demo.AppHost   # Keycloak benötigt Docker</code></pre>
         <ul>
@@ -363,8 +365,17 @@ AirWorks.configure({ locale: "fr" });</code></pre>
   access.ts       Sessions, Rollen     oidc.ts      OIDC-Provider
   apps/           Einstellungen, Admin demo/        Client-only-Demo (GitHub Pages)</code></pre>
         <p><code>npm run check</code> prüft das Rastermodell, <code>npm run build</code> baut Demo und Doku, <code>npm run build:package</code> die Bibliothek. Jeder Push auf <code>main</code> veröffentlicht Demo, Doku und <code>/lib</code> über <code>.github/workflows/pages.yml</code> auf GitHub Pages.</p>
-        <footer>AirWorks · MIT-Lizenz · <a href="https://github.com/fgilde/AirWorks">github.com/fgilde/AirWorks</a></footer>
+        <footer>AirWorks · MIT-Lizenz · <a href="https://github.com/fgilde/AirWorks">github.com/fgilde/AirWorks</a> · <a href="#" data-connect="gilde-contact">Kontakt</a> · <a href="#" data-connect="gilde-support">Support</a></footer>
       </section>
     </main>
+    <script type="module" src="https://connect.gilde.org/widgets/v1.js?v=2"></script>
+    <script type="module" src="https://quickrun.org/components.js"></script>
+    <div class="connect-widgets"><gilde-contact project="fgilde/AirWorks" language="de" show-homepage="false" show-footer="false"></gilde-contact><gilde-support project="fgilde/AirWorks" language="de" show-homepage="false" show-footer="false"></gilde-support></div>
+    <script type="module">
+      document.querySelectorAll("[data-connect]").forEach((link) => link.addEventListener("click", (event) => {
+        event.preventDefault();
+        document.querySelector(link.dataset.connect)?.openDialog();
+      }));
+    </script>
   </body>
 </html>

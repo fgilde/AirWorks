@@ -11,6 +11,7 @@ AirWorks.configure({
   identityStore: httpIdentityStore(AirWorks.request, '/identity'),
   profileStore: httpProfileStore(AirWorks.request, '/profile'),
   brand: { title: 'AirWorks Demo' },
+  loginHint: 'Keycloak users: admin / admin (administrator) or demo / demo (user).',
   initialShortcuts: ['secure-reports', 'notes', 'airworks.identity'],
   initialApps: ['secure-reports'],
 });

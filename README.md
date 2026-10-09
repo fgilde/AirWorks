@@ -36,6 +36,10 @@ Or without installing anything:
 
 `samples/AirWorks.Demo` runs AirWorks with .NET Aspire, Keycloak and a permission-checking ASP.NET Core API.
 
+[![QuickRun](https://quickrun.org/badge.svg)](https://quickrun.org/run?repo=fgilde/AirWorks)
+
+One click with [QuickRun](https://quickrun.org) clones, builds and starts it from `quickrun.yml`. Or by hand:
+
 ```bash
 cd samples/AirWorks.Demo
 dotnet run --project AirWorks.Demo.AppHost
