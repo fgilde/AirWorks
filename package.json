@@ -1,0 +1,42 @@
+{
+  "name": "@fgilde/airworks",
+  "version": "0.4.0",
+  "description": "Browser-native web desktop and micro-frontend shell",
+  "keywords": [
+    "webtop",
+    "web desktop",
+    "micro frontend",
+    "window manager",
+    "shell"
+  ],
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fgilde/AirWorks.git"
+  },
+  "homepage": "https://fgilde.github.io/AirWorks/",
+  "files": [
+    "package"
+  ],
+  "main": "./package/airworks.js",
+  "module": "./package/airworks.js",
+  "types": "./package/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./package/types/index.d.ts",
+      "import": "./package/airworks.js"
+    },
+    "./style.css": "./package/airworks.css",
+    "./icons/*": "./package/icons/*"
+  },
+  "scripts": {
+    "prepare": "node scripts/prepare.mjs",
+    "build": "npm --prefix src/airworks run build",
+    "build:package": "npm --prefix src/airworks run build:package",
+    "check": "npm --prefix src/airworks run check"
+  },
+  "engines": {
+    "node": ">=22.18"
+  }
+}

@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="theme-color" content="#132b4f" />
+    <link rel="icon" href="/icons/logo-air.png" />
+    <title>AirWorks · Developer guide</title><link rel="stylesheet" href="/src/docs.css" />
+  </head>
+  <body>
+    <aside class="docs-sidebar">
+      <a class="brand" href="./"><img src="/icons/logo-air.png" alt="AirWorks logo" /><span>AirWorks<small>Developer Guide</small></span></a>
+      <div class="languages"><strong>EN</strong><a href="./de.html">DE</a></div>
+      <nav>
+        <a href="#install">Installation</a><a href="#quickstart">Quick start</a><a href="#options">Options</a><a href="#apps">Apps</a>
+        <a href="#remotes">Micro frontends</a><a href="#desktop">Desktop &amp; folders</a><a href="#auth">Authentication</a><a href="#profiles">User profiles</a>
+        <a href="#access">Roles &amp; permissions</a><a href="#server">Server integration</a><a href="#aspire">.NET Aspire sample</a>
+        <a href="#events">Events</a><a href="#i18n">Languages</a><a href="#api">API reference</a><a href="#develop">Develop &amp; deploy</a>
+      </nav>
+      <a class="back" href="./webtop.html" target="_top">← Open the Webtop</a>
+    </aside>
+    <main>
+      <header class="hero">
+        <img class="hero-logo" src="/icons/logo-air.png" alt="AirWorks logo" />
+        <span class="eyebrow">AirWorks 0.4</span>
+        <h1>Build apps, not desktop chrome.</h1>
+        <p>AirWorks is a framework-free web desktop and micro-frontend shell. It brings windows, a taskbar with previews, several webtops, folders, drag and drop, search, pop-outs, a login screen, roles and permissions and persistence. You register apps.</p>
+        <div class="hero-actions"><a href="#install">Get started</a><a class="secondary" href="./webtop.html" target="_top">Open the Webtop demo</a><a class="secondary" href="https://github.com/fgilde/AirWorks">GitHub</a></div>
+      </header>
+
+      <section id="install"><div class="section-kicker">01 · Setup</div><h2>Install</h2>
+        <p>AirWorks is one ES module (<code>airworks.js</code>), one stylesheet (<code>airworks.css</code>) and an <code>icons/</code> folder. Pick one of three ways to get it; the API is identical.</p>
+        <div class="code-tabs">
+          <article><h3>A · Package (git dependency)</h3><pre><code>npm install github:fgilde/AirWorks</code></pre><p>npm clones the repository and builds the library during install (<code>prepare</code>). Node 22.18+ is required.</p></article>
+          <article><h3>B · No install (CDN from GitHub Pages)</h3><pre><code>&lt;link rel="stylesheet"
+  href="https://fgilde.github.io/AirWorks/lib/airworks.css"&gt;
+&lt;script type="module"&gt;
+  import { AirWorks } from
+    "https://fgilde.github.io/AirWorks/lib/airworks.js";
+&lt;/script&gt;</code></pre><p>Icons load from <code>lib/icons/</code> next to the module automatically.</p></article>
+        </div>
+        <h3>C · Repository checkout</h3>
+        <pre><code>git clone https://github.com/fgilde/AirWorks.git
+cd AirWorks/src/airworks
+npm install
+npm run dev            # docs on http://127.0.0.1:4173, demo on /webtop.html
+npm run build:package  # writes ../../package (airworks.js, airworks.css, icons, types)</code></pre>
+        <div class="callout"><strong>Icons when bundling.</strong> AirWorks resolves icon names against <code>assetBase</code>. Its default is the <code>icons/</code> folder next to <code>airworks.js</code>, which works for the CDN and for unbundled ESM. When a bundler (Vite, webpack …) inlines AirWorks into your own chunk, copy <code>node_modules/@fgilde/airworks/package/icons</code> into your public folder and set <code>assetBase</code>, as the Aspire sample does with <code>publicDir</code>.</div>
+      </section>
+
+      <section id="quickstart"><div class="section-kicker">02 · First app</div><h2>Quick start</h2>
+        <pre><code>&lt;air-desktop&gt;&lt;/air-desktop&gt;
+&lt;script type="module"&gt;
+  import { AirWorks } from "@fgilde/airworks";
+  import "@fgilde/airworks/style.css";
+
+  AirWorks.configure({ initialShortcuts: ["hello"], initialApps: ["hello"] });
+  AirWorks.registerApp({
+    id: "hello",
+    title: "Hello",
+    icon: "fn-dashboard.png",          // a file in the icon folder, or any URL
+    accent: "#00a4a6",
+    width: 640, height: 420,
+    render: () => "&lt;h1&gt;Hello AirWorks&lt;/h1&gt;",
+  });
+&lt;/script&gt;</code></pre>
+        <p><code>&lt;air-desktop&gt;</code> initializes in a microtask, so <code>configure()</code> and registrations in the same module always come first. If your setup is asynchronous (for example you <code>await</code> a configuration endpoint), add the element afterwards instead: <code>document.body.append(document.createElement("air-desktop"))</code>. Apps, permissions and providers can be registered at any time; the desktop updates live.</p>
+      </section>
+
+      <section id="options"><div class="section-kicker">03 · Configuration</div><h2>Options</h2>
+        <p><code>AirWorks.configure(options)</code> merges options and can be called repeatedly. <code>assetBase</code>, <code>storageKey</code>, <code>initialApps</code> and <code>initialShortcuts</code> are read when the desktop initializes.</p>
+        <table><thead><tr><th>Option</th><th>Purpose</th></tr></thead><tbody>
+          <tr><td><code>assetBase</code></td><td>Base URL of the icon folder. Default: <code>icons/</code> next to the module.</td></tr>
+          <tr><td><code>locale</code></td><td><code>"en"</code> or <code>"de"</code> (or your own via <code>addMessages</code>). Default: browser language. A choice in Settings wins.</td></tr>
+          <tr><td><code>serverBaseUrl</code></td><td>Prefix for <code>AirWorks.request(path)</code>.</td></tr>
+          <tr><td><code>request</code></td><td>Replaces the built-in fetch transport completely.</td></tr>
+          <tr><td><code>requireLogin</code></td><td>As soon as an auth provider is registered, the desktop starts on the login screen and stays locked until someone signs in. Set <code>false</code> to allow guests.</td></tr>
+          <tr><td><code>accessProvider</code></td><td><code>(session) =&gt; { roles, permissions }</code>, e.g. from <code>/api/me</code>. Runs after every login.</td></tr>
+          <tr><td><code>identityStore</code></td><td>Users/roles backend; enables the built-in "Users &amp; roles" app.</td></tr>
+          <tr><td><code>brand</code></td><td><code>{ title, logo, startIcon }</code> for the login screen, start button, about page and corner logo.</td></tr>
+          <tr><td><code>docsUrl</code></td><td>Adds a documentation button to the start menu; the documentation opens as a window.</td></tr>
+          <tr><td><code>webLinks</code></td><td>The built-in <em>Web link</em> app (default <code>true</code>). Set <code>false</code> when you only want your own apps.</td></tr>
+          <tr><td><code>storageKey</code></td><td>Prefix for saved profiles (default <code>airworks</code>; signed-in users get <code>airworks.&lt;user id&gt;</code>).</td></tr>
+          <tr><td><code>profileStore</code></td><td>Where profiles (webtops, shortcuts, settings, open windows) are kept. Default: localStorage. See <a href="#profiles">user profiles</a>.</td></tr>
+          <tr><td><code>initialShortcuts</code> / <code>initialApps</code></td><td>App ids placed on the first webtop / opened on the very first start (no saved workspace).</td></tr>
+        </tbody></table>
+      </section>
+
+      <section id="apps"><div class="section-kicker">04 · Apps</div><h2>Register apps</h2>
+        <p>An app is a plain object. It needs <code>id</code>, <code>title</code>, <code>icon</code> and exactly one way to produce content: <code>render</code>, <code>url</code> or <code>entry</code>.</p>
+        <pre><code>AirWorks.registerApp({
+  id: "orders",
+  title: "Orders",
+  icon: "fn-reporttable.png",
+  accent: "#35496b",               // window, tile and taskbar color
+  width: 900, height: 600,
+  requiredPermissions: ["orders.read"],
+  hidden: false,                   // true: not in start menu/search, still openable via API
+  async render({ host, request, can, onClose, setTitle, session, access }) {
+    host.innerHTML = "Loading …";
+    const orders = await request("/orders");
+    host.innerHTML = renderTable(orders);
+    const timer = setInterval(refresh, 30_000);
+    onClose(() =&gt; clearInterval(timer));     // cleanup when the window closes
+  },
+});</code></pre>
+        <div class="feature-grid">
+          <article><h3>render</h3><p>Return an HTML string, a DOM node, or nothing and write into <code>context.host</code>. May be async. AirWorks never re-renders a window body, so state, custom elements and framework roots (React, Vue, Svelte, Angular elements) stay alive until the window closes.</p></article>
+          <article><h3>url</h3><p>Loads the app in an iframe: full isolation for independently deployed micro frontends. The iframe handles its own authentication (single sign-on with the same identity provider works).</p></article>
+          <article><h3>entry</h3><p>An ES module URL that is imported on first open. Its default export (or <code>exportName</code>) is a render function or a partial app definition.</p></article>
+          <article><h3>context</h3><p><code>host</code>, <code>appId</code>, <code>windowId</code>, <code>session</code>, <code>access</code>, <code>can(permission)</code>, <code>request(path, init)</code>, <code>onClose(cb)</code>, <code>setTitle(text)</code>, <code>setAppearance({ title, accent, icon })</code> and <code>link</code> (the shortcut the window was opened from, with its <code>data</code>).</p></article>
+        </div>
+        <p>Every window gets the menu actions <em>create/update shortcut</em>, <em>duplicate</em> and <em>open in browser</em> (a pop-out that shows just this app via <code>?app=&lt;id&gt;</code>). Apps add their own entries with <code>menu: [{ id, title, icon, run(context) }]</code>. With <code>multiple: true</code> every shortcut opens its own window instead of focusing the existing one. Built-in apps: <code>airworks.settings</code>, <code>airworks.identity</code>, <code>airworks.weblink</code> and <code>airworks.docs</code>. <code>AirWorks.unregisterApp(id)</code> removes an app.</p>
+        <h3>Web links</h3>
+        <p>The <em>Web link</em> app turns any web page into an app: name, web address, color and icon (uploaded image or the site's favicon). It creates a shortcut and shows the page in a window; <em>Edit web link</em> in the window menu changes it later. Pages that forbid embedding (<code>X-Frame-Options</code>) stay empty; the window offers to open them in the browser. Disable it with <code>webLinks: false</code>.</p>
+        <h3>Using a framework</h3>
+        <pre><code>// React
+render: ({ host, onClose }) =&gt; {
+  const root = createRoot(host);
+  root.render(&lt;Orders /&gt;);
+  onClose(() =&gt; root.unmount());
+}</code></pre>
+      </section>
+
+      <section id="remotes"><div class="section-kicker">05 · Composition</div><h2>Micro frontends</h2>
+        <p>Teams can ship apps independently. <code>AirWorks.loadRemote(url)</code> fetches a JSON manifest; relative <code>entry</code>, <code>url</code> and <code>icon</code> paths resolve against the manifest URL. Apps from <code>entry</code> load lazily on first open.</p>
+        <pre><code>// https://team-a.example.com/airworks/manifest.json
+{
+  "permissions": [{ "id": "remote.hello", "title": "Use hello", "group": "Team A" }],
+  "apps": [
+    { "id": "remote-hello", "title": "Remote hello", "icon": "fn-ideaportal.png",
+      "entry": "./hello.js", "requiredPermissions": ["remote.hello"] },
+    { "id": "billing", "title": "Billing", "icon": "./billing.png", "url": "./billing/index.html" }
+  ],
+  "modules": ["./register-more.js"]   // modules that call AirWorks.* themselves
+}
+
+// hello.js
+export default function render({ host, access, onClose }) {
+  return `&lt;h2&gt;Hello ${access.identity?.displayName ?? "guest"}&lt;/h2&gt;`;
+}</code></pre>
+        <pre><code>await AirWorks.loadRemote("https://team-a.example.com/airworks/manifest.json");
+await AirWorks.loadRemote({ apps: [/* inline manifest */] });</code></pre>
+        <p>The client-only demo loads <code>remote/manifest.json</code> this way. Cross-origin modules need CORS headers on the remote host. A manifest can also be produced by your server per user.</p>
+      </section>
+
+      <section id="desktop"><div class="section-kicker">06 · Desktop model</div><h2>Webtops, folders and drag and drop</h2>
+        <p>Webtops (up to 9) and folders are the same thing: paged grids. Webtops have 5 × 3 cells, folders 4 × 3 and as many pages as needed. Every rule applies to both:</p>
+        <ul class="rules">
+          <li><strong>Free cell</strong> – the icon moves there, also across pages.</li>
+          <li><strong>App on app</strong> (webtop) – creates a folder in that cell.</li>
+          <li><strong>App on folder</strong> – hover ~0.65 s and the folder opens, then drop on an exact cell; dropping right away puts it in the first free cell.</li>
+          <li><strong>Occupied cell</strong> in a folder, or a folder on anything – the two swap.</li>
+          <li><strong>Rest at an edge</strong> – switches to the previous/next page and keeps going while you stay; past the last page a new page appears (removed again if it stays empty).</li>
+          <li><strong>Drag out of a folder</strong> – leave the folder with the pointer and it closes, drop on the webtop. Empty folders disappear.</li>
+          <li><strong>Trash</strong> – while you drag an existing shortcut or folder, a trash bin appears at the bottom. Drop on it to delete; a folder is deleted with its content. Windows linked to a deleted shortcut keep running.</li>
+          <li>Drag apps from the start menu onto any webtop or folder. Double-click a label or press <kbd>F2</kbd> to rename.</li>
+        </ul>
+        <p>Dragging uses pointer events with a floating ghost (mouse, pen and touch), so nothing re-renders while you drag. Windows slide aside while you drag icons. Windows resize from every edge and corner and snap like this: drag to the top to maximize, to the left/right/bottom edge for halves, into a corner for quarters; <kbd>Ctrl</kbd>+arrows move between these positions (top twice = upper half, bottom twice = minimize). Other features:, taskbar on any side with auto-hide, previews, search, pilot view (all windows and webtops; add/delete webtops), wallpapers and effects. Shortcuts of apps the user may not use stay in place but are hidden.</p>
+      </section>
+
+      <section id="auth"><div class="section-kicker">07 · Identity</div><h2>Authentication</h2>
+        <p>Without an auth provider AirWorks runs without any login. Register one or more providers and the desktop starts on the login screen: the card lists every provider, shakes on a failed attempt and, after signing in, shrinks into the start button. Signing out returns to the login screen. Pass <code>requireLogin: false</code> to keep the desktop usable for guests and offer sign-in from the start menu.</p>
+        <h3>Real login with a server (recommended)</h3>
+        <ol>
+          <li>Run an identity provider (Keycloak, Entra ID, Auth0 …) and register a <em>public</em> client with the page URL as redirect URI and its origin as web origin.</li>
+          <li>Register the provider in the browser with <code>createOidcProvider</code> (below). The user signs in at the identity provider; AirWorks receives tokens via PKCE.</li>
+          <li>Your API validates the access token (JWT bearer) and decides what the user may do. <code>AirWorks.request</code> sends the token automatically.</li>
+          <li>Let the API return the effective roles and permissions (<code>GET /me</code>) and plug it in as <code>accessProvider</code>; enforce the same permissions on every endpoint.</li>
+          <li>Optionally store users, roles and profiles on the server: <code>identityStore: httpIdentityStore(…)</code>, <code>profileStore: httpProfileStore(…)</code>.</li>
+        </ol>
+        <pre><code>AirWorks.configure({
+  serverBaseUrl: "/api",
+  accessProvider: () =&gt; AirWorks.request("/me"),
+  identityStore: httpIdentityStore(AirWorks.request, "/identity"),
+  profileStore: httpProfileStore(AirWorks.request, "/profile"),
+});
+AirWorks.registerAuthProvider(createOidcProvider({ id: "keycloak", title: "Keycloak", authority, clientId: "airworks-web" }));
+document.body.append(document.createElement("air-desktop"));</code></pre>
+        <p>The <a href="#aspire">.NET Aspire sample</a> implements exactly this, including the API side.</p>
+        <h3>OpenID Connect (Keycloak, Entra ID, Auth0, Okta, Zitadel …)</h3>
+        <pre><code>import { AirWorks, createOidcProvider } from "@fgilde/airworks";
+
+AirWorks.registerAuthProvider(createOidcProvider({
+  id: "keycloak",
+  title: "Keycloak",
+  authority: "https://sso.example.com/realms/airworks",
+  clientId: "airworks-web",               // public client, PKCE S256
+  // scope: "openid profile email",       // default
+  // redirectUri: location.origin + location.pathname,
+  // extraParams: { kc_idp_hint: "github" },
+  // roleClaims: ["realm_access.roles", "roles", "groups"],
+}));
+
+AirWorks.registerAuthProvider(createOidcProvider({
+  id: "entra", title: "Microsoft",
+  authority: "https://login.microsoftonline.com/&lt;tenant&gt;/v2.0",
+  clientId: "&lt;spa-client-id&gt;",
+  scope: "openid profile email api://&lt;api-client-id&gt;/access",
+}));</code></pre>
+        <p><code>createOidcProvider</code> implements the authorization code flow with PKCE without dependencies: discovery, redirect, code exchange, refresh with refresh tokens and RP-initiated logout. Register the page URL as redirect URI and its origin as allowed web origin (CORS) at the identity provider. Tokens live in <code>sessionStorage</code>. Roles are read from <code>roleClaims</code>; <code>mapSession(claims, tokens)</code> customizes the session.</p>
+        <div class="callout"><strong>Social logins.</strong> GitHub does not offer OIDC with CORS, and Google requires a client secret for web clients. Connect them through Keycloak identity brokering and add a button with <code>extraParams: { kc_idp_hint: "github" }</code>; the Aspire sample has this entry ready in <code>appsettings.json</code>.</div>
+        <h3>Client only: local users (demos)</h3>
+        <pre><code>import { localAuthProvider, localIdentityStore } from "@fgilde/airworks";
+const identity = localIdentityStore({ users: [...], roles: [...] });
+AirWorks.registerAuthProvider(localAuthProvider(identity, { title: "Demo users" }));</code></pre>
+        <p>A user switcher for demos and prototypes: the login screen asks for a user name and roles come from the local identity store. Everything lives in the browser, so anyone can change it in the developer tools. Use it to try the UI, never to protect data. The <a href="./webtop.html" target="_top">live demo</a> works this way (users <code>demo</code> and <code>admin</code>).</p>
+        <h3>Your own provider or flow</h3>
+        <pre><code>AirWorks.registerAuthProvider({
+  id: "company", title: "Company login",
+  fields: [{ name: "userName", label: "userName" }, { name: "password", label: "Password", type: "password" }],
+  async login(values) { return await myLogin(values); },  // returns a Session
+  async restore() { return mySavedSession(); },           // startup, redirect return and refresh
+  logout(session) { /* … */ },
+});
+// or skip providers and set the session yourself:
+await AirWorks.setSession({ token, identity: { id: "jdoe", displayName: "J. Doe" }, roles: ["user"] });</code></pre>
+        <p>A <code>Session</code> is <code>{ token?, identity?, roles?, permissions?, expiresAt? }</code>. With <code>expiresAt</code>, AirWorks calls the provider's <code>restore()</code> 30 seconds before expiry to refresh.</p>
+      </section>
+
+      <section id="profiles"><div class="section-kicker">07b · Persistence</div><h2>User profiles</h2>
+        <p>Webtops, folders, shortcuts, settings and open windows form a profile. Without login there is one profile; with login every user has their own (key <code>&lt;storageKey&gt;.&lt;user id&gt;</code>), loaded on sign-in and saved automatically.</p>
+        <div class="code-tabs">
+          <article><h3>Browser (default)</h3><pre><code>AirWorks.configure({ profileStore: localProfileStore() });</code></pre><p>Per browser and user.</p></article>
+          <article><h3>Server</h3><pre><code>AirWorks.configure({
+  profileStore: httpProfileStore(AirWorks.request, "/profile"),
+});
+// GET /profile?key=…  → profile JSON or 204
+// PUT /profile?key=…  ← profile JSON</code></pre><p>Follows the user to every device. Use the authenticated user on the server, not the key, to decide whose profile it is.</p></article>
+        </div>
+        <p>Any object with <code>load(key)</code> and <code>save(key, profile)</code> works as <code>profileStore</code>.</p>
+      </section>
+
+      <section id="access"><div class="section-kicker">08 · Authorization</div><h2>Roles &amp; permissions</h2>
+        <p>Permissions are strings. Apps declare <code>requiredPermissions</code>; apps without them are visible to everyone. Register permissions so admins can pick them (client side, server side or both; the admin app merges both lists):</p>
+        <pre><code>AirWorks.registerPermissions([
+  { id: "orders.read", title: "Read orders", group: "Orders" },
+  { id: "orders.write", title: "Edit orders", group: "Orders", description: "Create and change" },
+]);
+AirWorks.can("orders.write");        // also available in the app context
+AirWorks.access;                     // { identity, roles, permissions }</code></pre>
+        <h3>How permissions are resolved after login</h3>
+        <ol>
+          <li>With <code>accessProvider</code>: its result (typically your server's <code>/me</code>). Recommended for real security.</li>
+          <li>Otherwise: the session's <code>permissions</code> plus the permissions of its roles from the <code>identityStore</code> (session roles plus roles assigned to the user record with the same id or user name).</li>
+        </ol>
+        <p>Call <code>AirWorks.refreshAccess()</code> after changing assignments elsewhere; the built-in admin app does this itself. Windows of apps the user loses access to close.</p>
+        <h3>Users &amp; roles app</h3>
+        <p>Configure an <code>identityStore</code> and grant <code>airworks.identity.manage</code> (exported as <code>MANAGE_IDENTITY</code>) to administrators. The app edits users (roles), and roles (permissions).</p>
+        <div class="code-tabs">
+          <article><h3>Client only</h3><pre><code>localIdentityStore(seed?, key?)
+// localStorage, for demos</code></pre></article>
+          <article><h3>Server</h3><pre><code>httpIdentityStore(AirWorks.request, "/identity")
+GET    /identity/users     PUT/DELETE /identity/users/{id}
+GET    /identity/roles     PUT/DELETE /identity/roles/{id}
+GET    /identity/permissions</code></pre></article>
+        </div>
+        <p>Or implement <code>IdentityStore</code> (<code>listUsers, saveUser, deleteUser, listRoles, saveRole, deleteRole, listPermissions</code>) for any backend.</p>
+        <div class="callout"><strong>Client checks are UX, not security.</strong> They hide what a user cannot use. Always enforce permissions on the server, as the Aspire sample does.</div>
+      </section>
+
+      <section id="server"><div class="section-kicker">09 · Backend</div><h2>Server integration</h2>
+        <pre><code>AirWorks.configure({
+  serverBaseUrl: "/api",
+  accessProvider: () =&gt; AirWorks.request("/me"),   // { identity?, roles, permissions }
+});
+const orders = await AirWorks.request("/orders");                     // adds "Authorization: Bearer &lt;token&gt;"
+await AirWorks.request("/orders/7", { method: "PUT", body: JSON.stringify(order) });  // JSON content type added</code></pre>
+        <p><code>request</code> throws on non-2xx, returns JSON or text, and <code>undefined</code> for 204. Pass <code>request</code> in the options to use your own HTTP client. Server side (ASP.NET Core, from the sample):</p>
+        <pre><code>api.MapGet("/me", (ClaimsPrincipal user, IdentityService identity) =&gt; identity.Describe(user));
+api.MapGet("/reports", GetReports).RequirePermission("reports.read");
+// RequirePermission: endpoint filter that maps the caller's roles to permissions and returns 403 otherwise.</code></pre>
+      </section>
+
+      <section id="aspire"><div class="section-kicker">10 · Full stack</div><h2>.NET Aspire sample</h2>
+        <p><code>samples/AirWorks.Demo</code> is a complete, secured setup: Aspire AppHost, Keycloak (realm import), an ASP.NET Core API with JWT validation and permission checks, and a web host that serves the AirWorks client (consumed as package) and proxies <code>/api</code>.</p>
+        <pre><code>cd samples/AirWorks.Demo
+dotnet run --project AirWorks.Demo.AppHost   # needs Docker for Keycloak</code></pre>
+        <ul>
+          <li>Open <code>http://localhost:5177</code> and sign in with Keycloak: <code>demo</code>/<code>demo</code> or <code>admin</code>/<code>admin</code> (local development only).</li>
+          <li>Keycloak supplies the realm roles <code>airworks-user</code> and <code>airworks-admin</code>. The API maps roles to permissions (<code>reports.read</code>, <code>reports.export</code>, <code>airworks.identity.manage</code>) and exposes them on <code>/api/me</code>.</li>
+          <li>As admin, open <em>Users &amp; roles</em>: assign the role <code>controller</code> to a user or grant the client-registered permission <code>notes.use</code> to a role, and the <em>Notes</em> app appears immediately.</li>
+          <li>Sign-in buttons come from <code>AirWorks:Providers</code> in <code>AirWorks.Demo.Web/appsettings.json</code>; it contains disabled examples for GitHub (via Keycloak brokering) and Microsoft Entra ID.</li>
+          <li>Webtops, shortcuts, settings and open windows are stored per user on the server (<code>/api/profile</code>), so they follow the user to every browser.</li>
+          <li>Keycloak runs on <code>https://localhost:8080</code> with the ASP.NET Core development certificate (<code>dotnet dev-certs https --trust</code>). The sample keeps users and role mappings in memory.</li>
+        </ul>
+      </section>
+
+      <section id="events"><div class="section-kicker">11 · Lifecycle</div><h2>Events</h2>
+        <pre><code>const off = AirWorks.on("login", (session) =&gt; console.log(session));
+AirWorks.on("logout", () =&gt; location.reload());
+AirWorks.on("access-changed", ({ roles, permissions }) =&gt; {});
+AirWorks.on("app-opened", ({ appId, windowId }) =&gt; {});
+AirWorks.on("access-denied", ({ appId, requiredPermissions }) =&gt; {});
+off();</code></pre>
+        <p>The desktop element also dispatches bubbling DOM events: <code>airworks:login</code>, <code>airworks:logout</code>, <code>airworks:access-changed</code>, <code>airworks:app-opened</code>, <code>airworks:access-denied</code>.</p>
+      </section>
+
+      <section id="i18n"><div class="section-kicker">12 · Languages</div><h2>Languages</h2>
+        <p>The shell ships English and German; users switch in <em>Settings → General</em>. Add or override texts:</p>
+        <pre><code>import { addMessages } from "@fgilde/airworks";
+addMessages("fr", { close: "Fermer", settings: "Paramètres" });
+AirWorks.configure({ locale: "fr" });</code></pre>
+        <p>Missing keys fall back to English. App titles are yours to translate.</p>
+      </section>
+
+      <section id="api"><div class="section-kicker">13 · Reference</div><h2>API reference</h2>
+        <table><thead><tr><th>Member</th><th>Description</th></tr></thead><tbody>
+          <tr><td><code>configure(options)</code></td><td>See <a href="#options">options</a>.</td></tr>
+          <tr><td><code>registerApp(app)</code>, <code>registerApps(apps)</code>, <code>unregisterApp(id)</code></td><td>Manage apps. Duplicate ids throw.</td></tr>
+          <tr><td><code>loadRemote(urlOrManifest)</code></td><td>Load a micro-frontend manifest.</td></tr>
+          <tr><td><code>openApp(id)</code></td><td>Open (or focus) an app; returns <code>false</code> if unknown or not permitted.</td></tr>
+          <tr><td><code>registerPermission(s)</code>, <code>can(id)</code>, <code>access</code>, <code>refreshAccess()</code></td><td>Permissions.</td></tr>
+          <tr><td><code>registerAuthProvider(p)</code>, <code>login(id, values?)</code>, <code>logout()</code>, <code>setSession(s)</code>, <code>session</code>, <code>showLogin()</code></td><td>Authentication.</td></tr>
+          <tr><td><code>request(path, init?)</code></td><td>Authenticated fetch.</td></tr>
+          <tr><td><code>on(event, handler)</code></td><td>Subscribe; returns unsubscribe.</td></tr>
+          <tr><td>Exports</td><td><code>createOidcProvider</code>, <code>localAuthProvider</code>, <code>localIdentityStore</code>, <code>httpIdentityStore</code>, <code>MANAGE_IDENTITY</code>, <code>localProfileStore</code>, <code>httpProfileStore</code>, <code>addMessages</code>, <code>setLocale</code>, <code>AirDesktop</code>, <code>VERSION</code> and all types.</td></tr>
+        </tbody></table>
+        <p>Script-tag users find the same object on <code>window.AirWorks</code>.</p>
+      </section>
+
+      <section id="develop"><div class="section-kicker">14 · Contributing</div><h2>Develop &amp; deploy</h2>
+        <pre><code>src/airworks/src/
+  index.ts        public API          runtime.ts   apps, options, remote loading
+  desktop.ts      &lt;air-desktop&gt;       windows.ts   windows, taskbar, snapping
+  workspace.ts    webtops &amp; folders   grid.ts      pure grid model (npm run check)
+  grid-view.ts    paged grid view     drag.ts      pointer drag engine
+  access.ts       sessions, roles     oidc.ts      OIDC provider
+  apps/           settings, identity  demo/        client-only demo (GitHub Pages)</code></pre>
+        <p><code>npm run check</code> runs the grid model self-test, <code>npm run build</code> builds demo and docs, <code>npm run build:package</code> the library. Every push to <code>main</code> deploys demo, docs and <code>/lib</code> to GitHub Pages via <code>.github/workflows/pages.yml</code>.</p>
+        <footer>AirWorks · MIT License · <a href="https://github.com/fgilde/AirWorks">github.com/fgilde/AirWorks</a></footer>
+      </section>
+    </main>
+  </body>
+</html>

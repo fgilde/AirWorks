@@ -1,0 +1,20 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.6.1">
+
+  <ItemGroup>
+    <ProjectReference Include="..\AirWorks.Demo.Api\AirWorks.Demo.Api.csproj" />
+    <ProjectReference Include="..\AirWorks.Demo.Web\AirWorks.Demo.Web.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.Keycloak" Version="13.6.1-preview.1.26506.6" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UserSecretsId>a760e8b0-6538-4571-9d3a-251fc2eb0c24</UserSecretsId>
+  </PropertyGroup>
+
+</Project>

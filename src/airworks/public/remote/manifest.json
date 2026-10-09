@@ -1,0 +1,14 @@
+{
+  "permissions": [{ "id": "remote.hello", "title": "Use the remote hello app", "group": "Remote" }],
+  "apps": [
+    {
+      "id": "remote-hello",
+      "title": "Remote hello",
+      "icon": "fn-ideaportal.png",
+      "accent": "#d15c27",
+      "width": 520,
+      "height": 360,
+      "entry": "./hello.js"
+    }
+  ]
+}

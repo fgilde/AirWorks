@@ -1,0 +1,99 @@
+{
+  "realm": "airworks",
+  "displayName": "AirWorks Demo",
+  "enabled": true,
+  "registrationAllowed": false,
+  "resetPasswordAllowed": true,
+  "loginWithEmailAllowed": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "airworks-user",
+        "description": "AirWorks user (permissions are mapped in the AirWorks API)"
+      },
+      {
+        "name": "airworks-admin",
+        "description": "AirWorks administrator (permissions are mapped in the AirWorks API)"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "airworks-web",
+      "name": "AirWorks Aspire browser client",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:5177/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5177"
+      ],
+      "protocol": "openid-connect",
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:5177/*",
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "airworks-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "airworks-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "airworks-api",
+      "name": "AirWorks protected API",
+      "enabled": true,
+      "bearerOnly": true,
+      "protocol": "openid-connect"
+    }
+  ],
+  "users": [
+    {
+      "username": "demo",
+      "email": "demo@airworks.local",
+      "firstName": "Demo",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "airworks-user"
+      ]
+    },
+    {
+      "username": "admin",
+      "email": "admin@airworks.local",
+      "firstName": "AirWorks",
+      "lastName": "Admin",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "airworks-admin"
+      ]
+    }
+  ]
+}

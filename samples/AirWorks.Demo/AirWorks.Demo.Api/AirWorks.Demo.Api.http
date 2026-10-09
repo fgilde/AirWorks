@@ -1,0 +1,14 @@
+@api = http://localhost:5210
+# Get a token from Keycloak (http://localhost:8080) or copy one from the browser devtools.
+@token = paste-access-token-here
+
+GET {{api}}/api/me
+Authorization: Bearer {{token}}
+
+###
+GET {{api}}/api/reports
+Authorization: Bearer {{token}}
+
+###
+GET {{api}}/api/identity/roles
+Authorization: Bearer {{token}}

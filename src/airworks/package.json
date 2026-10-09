@@ -1,0 +1,17 @@
+{
+  "name": "airworks-client-workspace",
+  "private": true,
+  "version": "0.4.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "build:package": "vite build --config vite.config.lib.ts && tsc -p tsconfig.lib.json && node scripts/copy-package-assets.mjs",
+    "check": "node src/grid.check.ts",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^7.1.9"
+  }
+}
