@@ -55,6 +55,30 @@ export interface ProfileStore {
   save(key: string, profile: unknown): Promise<void>;
 }
 
+export type Brand = {
+  title?: string;
+  logo?: string;
+  startIcon?: string;
+  cornerLogo?: string | false;
+  description?: string;
+  version?: string;
+};
+
+export type WallpaperOption = { id: string; title: string; image?: string; background?: string; foreground?: string };
+
+export type DesktopSettings = {
+  askBeforeClose: boolean;
+  startMaximized: boolean;
+  instantPreview: boolean;
+  overwriteName: boolean;
+  restoreWindows: boolean;
+  hideTaskbar: boolean;
+  taskbarPosition: 'top' | 'right' | 'bottom' | 'left';
+  wallpaper: string;
+  effect: 'none' | 'bubble' | 'snow' | 'starfield' | 'warp' | 'network' | 'aurora';
+  systemColor: string;
+};
+
 export type LoginField = { name: string; label: string; type?: string };
 
 export type AuthProvider = {
@@ -139,7 +163,9 @@ export type AirWorksOptions = {
   requireLogin?: boolean;
   identityStore?: IdentityStore;
   accessProvider?: (session?: Session) => Promise<Partial<AccessSnapshot>> | Partial<AccessSnapshot>;
-  brand?: { title?: string; logo?: string; startIcon?: string };
+  brand?: Brand;
+  defaults?: Partial<DesktopSettings>;
+  wallpapers?: WallpaperOption[];
   docsUrl?: string;
   webLinks?: boolean;
   storageKey?: string;

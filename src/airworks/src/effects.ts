@@ -26,13 +26,13 @@ function bubbles(logo: string): Frame {
   image.src = logo;
   const items = Array.from({ length: 8 }, () => ({ x: random(0, innerWidth), y: random(0, innerHeight), scale: random(.5, 2), alpha: random(.04, .12), vx: random(.25, 1) * Math.sign(random(-1, 1)), vy: random(.25, 1) * Math.sign(random(-1, 1)) }));
   return (context, width, height) => {
-    if (!image.complete || !image.naturalWidth) return;
+    if (!image.complete || !image.naturalWidth || !width || !height) return;
     for (const item of items) {
-      const half = 64 * item.scale;
-      if (item.x + half > width || item.x - half < 0) item.vx *= -1;
-      if (item.y + half > height || item.y - half < 0) item.vy *= -1;
-      item.x = Math.min(width - half, Math.max(half, item.x + item.vx));
-      item.y = Math.min(height - half, Math.max(half, item.y + item.vy));
+      const half = Math.min(64 * item.scale, width / 2, height / 2);
+      if ((item.x - half <= 0 && item.vx < 0) || (item.x + half >= width && item.vx > 0)) item.vx *= -1;
+      if ((item.y - half <= 0 && item.vy < 0) || (item.y + half >= height && item.vy > 0)) item.vy *= -1;
+      item.x += item.vx;
+      item.y += item.vy;
       context.globalAlpha = item.alpha;
       context.drawImage(image, item.x - half, item.y - half, half * 2, half * 2);
     }

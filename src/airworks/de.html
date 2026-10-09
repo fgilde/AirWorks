@@ -52,7 +52,11 @@ npm run build:package  # schreibt ../../package (airworks.js, airworks.css, icon
   import { AirWorks } from "@fgilde/airworks";
   import "@fgilde/airworks/style.css";
 
-  AirWorks.configure({ initialShortcuts: ["hello"], initialApps: ["hello"] });
+  AirWorks.configure({
+    brand: { title: "Contoso Desk", logo: "/img/logo.png" },
+    initialShortcuts: ["hello"],
+    initialApps: ["hello"],
+  });
   AirWorks.registerApp({
     id: "hello",
     title: "Hallo",
@@ -75,7 +79,9 @@ npm run build:package  # schreibt ../../package (airworks.js, airworks.css, icon
           <tr><td><code>requireLogin</code></td><td>Sobald ein Auth-Provider registriert ist, startet der Desktop im Anmeldebildschirm und bleibt bis zur Anmeldung gesperrt. Mit <code>false</code> sind Gäste erlaubt.</td></tr>
           <tr><td><code>accessProvider</code></td><td><code>(session) =&gt; { roles, permissions }</code>, z. B. von <code>/api/me</code>. Läuft nach jeder Anmeldung.</td></tr>
           <tr><td><code>identityStore</code></td><td>Backend für Benutzer und Rollen; aktiviert die eingebaute App „Benutzer &amp; Rollen“.</td></tr>
-          <tr><td><code>brand</code></td><td><code>{ title, logo, startIcon }</code> für Anmeldebildschirm, Startknopf, Info-Seite und Logo in der Ecke.</td></tr>
+          <tr><td><code>brand</code></td><td>Dein Produkt: <code>{ title, logo, startIcon, cornerLogo, description, version }</code>. <code>title</code> und <code>logo</code> erscheinen im Anmeldebildschirm, unter Information und im Logo-Effekt; <code>startIcon</code> ersetzt das Logo im Startknopf; <code>cornerLogo</code> ist das Bild unten rechts (<code>false</code> blendet es aus).</td></tr>
+          <tr><td><code>defaults</code></td><td>Einstellungen für Benutzer ohne gespeichertes Profil, z. B. <code>{ wallpaper: "dark", systemColor: "#00777a", taskbarPosition: "bottom", effect: "none" }</code>.</td></tr>
+          <tr><td><code>wallpapers</code></td><td>Zusätzliche Hintergründe: <code>[{ id, title, image }]</code> oder <code>[{ id, title, background: "linear-gradient(…)", foreground: "#fff" }]</code>.</td></tr>
           <tr><td><code>docsUrl</code></td><td>Fügt dem Startmenü einen Doku-Knopf hinzu; die Doku öffnet sich als Fenster.</td></tr>
           <tr><td><code>webLinks</code></td><td>Die eingebaute App <em>Web-Verknüpfung</em> (Standard <code>true</code>). <code>false</code>, wenn nur eigene Apps erscheinen sollen.</td></tr>
           <tr><td><code>storageKey</code></td><td>Präfix gespeicherter Profile (Standard <code>airworks</code>; angemeldete Benutzer erhalten <code>airworks.&lt;Benutzer-ID&gt;</code>).</td></tr>

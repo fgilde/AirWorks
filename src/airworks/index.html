@@ -52,7 +52,11 @@ npm run build:package  # writes ../../package (airworks.js, airworks.css, icons,
   import { AirWorks } from "@fgilde/airworks";
   import "@fgilde/airworks/style.css";
 
-  AirWorks.configure({ initialShortcuts: ["hello"], initialApps: ["hello"] });
+  AirWorks.configure({
+    brand: { title: "Contoso Desk", logo: "/img/logo.png" },
+    initialShortcuts: ["hello"],
+    initialApps: ["hello"],
+  });
   AirWorks.registerApp({
     id: "hello",
     title: "Hello",
@@ -75,7 +79,9 @@ npm run build:package  # writes ../../package (airworks.js, airworks.css, icons,
           <tr><td><code>requireLogin</code></td><td>As soon as an auth provider is registered, the desktop starts on the login screen and stays locked until someone signs in. Set <code>false</code> to allow guests.</td></tr>
           <tr><td><code>accessProvider</code></td><td><code>(session) =&gt; { roles, permissions }</code>, e.g. from <code>/api/me</code>. Runs after every login.</td></tr>
           <tr><td><code>identityStore</code></td><td>Users/roles backend; enables the built-in "Users &amp; roles" app.</td></tr>
-          <tr><td><code>brand</code></td><td><code>{ title, logo, startIcon }</code> for the login screen, start button, about page and corner logo.</td></tr>
+          <tr><td><code>brand</code></td><td>Your product: <code>{ title, logo, startIcon, cornerLogo, description, version }</code>. <code>title</code> and <code>logo</code> appear on the login screen, in About and in the logo effect; <code>startIcon</code> replaces the logo on the start button; <code>cornerLogo</code> is the image bottom right (<code>false</code> hides it).</td></tr>
+          <tr><td><code>defaults</code></td><td>Settings for users without a saved profile, e.g. <code>{ wallpaper: "dark", systemColor: "#00777a", taskbarPosition: "bottom", effect: "none" }</code>.</td></tr>
+          <tr><td><code>wallpapers</code></td><td>Extra wallpapers: <code>[{ id, title, image }]</code> or <code>[{ id, title, background: "linear-gradient(…)" , foreground: "#fff" }]</code>.</td></tr>
           <tr><td><code>docsUrl</code></td><td>Adds a documentation button to the start menu; the documentation opens as a window.</td></tr>
           <tr><td><code>webLinks</code></td><td>The built-in <em>Web link</em> app (default <code>true</code>). Set <code>false</code> when you only want your own apps.</td></tr>
           <tr><td><code>storageKey</code></td><td>Prefix for saved profiles (default <code>airworks</code>; signed-in users get <code>airworks.&lt;user id&gt;</code>).</td></tr>

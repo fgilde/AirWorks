@@ -1,6 +1,6 @@
 import { createIdentityApp } from './apps/identity';
 import { createWebLinkApp, editWebLink, WEB_LINK } from './apps/weblink';
-import { createSettingsApp, defaultSettings, wallpapers, type Settings } from './apps/settings';
+import { createSettingsApp, defaultSettings, wallpaperOf, wallpapers, type Settings } from './apps/settings';
 import { getLocale, setLocale, t } from './i18n';
 import { startEffect } from './effects';
 import { LoginView } from './login';
@@ -183,7 +183,10 @@ export class AirDesktop extends HTMLElement {
 
   private applyBrand() {
     const brand = this.brand();
-    this.$<HTMLImageElement>('.company-image').src = brand.logo;
+    const corner = runtime.options.brand?.cornerLogo;
+    const company = this.$<HTMLImageElement>('.company-image');
+    company.hidden = corner === false;
+    company.src = corner ? runtime.asset(corner) : brand.logo;
     this.$<HTMLImageElement>('.start-button img').src = runtime.options.brand?.startIcon ? runtime.asset(runtime.options.brand.startIcon) : brand.logo;
     this.$('.air-shell').ariaLabel = brand.title;
     this.$('.docs-button').hidden = !runtime.options.docsUrl;
@@ -191,8 +194,10 @@ export class AirDesktop extends HTMLElement {
 
   private brand() {
     const brand = runtime.options.brand;
-    return { title: brand?.title ?? 'AirWorks', logo: runtime.asset(brand?.logo ?? 'logo-air.png') };
+    return { title: brand?.title ?? 'AirWorks', logo: runtime.asset(brand?.logo ?? 'logo-air.png'), description: brand?.description, version: brand?.version };
   }
+
+  private wallpapers() { return [...wallpapers, ...(runtime.options.wallpapers ?? []).map(wallpaperOf)]; }
 
   private bindShell() {
     this.$('.start-button').addEventListener('click', (event) => { event.stopPropagation(); this.toggleStart(); });
@@ -250,7 +255,8 @@ export class AirDesktop extends HTMLElement {
 
   private applySettings() {
     const settings = this.settings;
-    const wallpaper = wallpapers.find((candidate) => candidate.id === settings.wallpaper) ?? wallpapers[0];
+    const available = this.wallpapers();
+    const wallpaper = available.find((candidate) => candidate.id === settings.wallpaper) ?? available[0];
     const asset = (name: string) => runtime.asset(name);
     this.$('.wallpaper').style.background = settings.customWallpaper ? `#15294a url('${settings.customWallpaper}') center / cover no-repeat` : wallpaper.background(asset);
     this.style.setProperty('--desktop-foreground', settings.customWallpaper ? '#ffffff' : wallpaper.foreground);
@@ -482,6 +488,7 @@ export class AirDesktop extends HTMLElement {
       asset: (name) => runtime.asset(name),
       access: () => runtime.access.snapshot,
       brand: () => this.brand(),
+      wallpapers: () => this.wallpapers(),
       docsUrl: () => runtime.options.docsUrl,
       openDocs: () => this.launch(DOCS),
       version: VERSION,
@@ -543,7 +550,7 @@ export class AirDesktop extends HTMLElement {
     const locked = this.loginRequired && !identity;
     const profile = locked ? {} : await this.profileStore().load(key).catch(() => undefined) as Profile ?? {};
     if (this.profileKey !== key) return;
-    this.settings = { ...defaultSettings, ...profile.settings };
+    this.settings = { ...defaultSettings, ...runtime.options.defaults, ...profile.settings } as Settings;
     this.workspace.load(profile.workspace);
     if (!profile.workspace && !locked) (runtime.options.initialShortcuts ?? []).forEach((id) => {
       const app = runtime.apps.get(id);

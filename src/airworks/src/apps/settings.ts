@@ -4,6 +4,7 @@ import { esc } from '../util';
 
 export type TaskbarSide = 'top' | 'right' | 'bottom' | 'left';
 import { effects, type Effect } from '../effects';
+import type { WallpaperOption } from '../types';
 
 export type { Effect };
 
@@ -46,12 +47,20 @@ export const wallpapers: Wallpaper[] = [
 const systemColors = [['#35496b', 'Blue'], ['#447d1c', 'Green'], ['#8d4085', 'Violet'], ['#555b66', 'Graphite'], ['#a2273b', 'Red'], ['#00777a', 'Teal']];
 const sides: Array<[TaskbarSide, MessageKey]> = [['top', 'top'], ['right', 'right'], ['bottom', 'bottom'], ['left', 'left']];
 
+export const wallpaperOf = (option: WallpaperOption): Wallpaper => ({
+  id: option.id,
+  title: option.title,
+  foreground: option.foreground ?? '#ffffff',
+  background: (asset) => option.background ?? `url('${asset(option.image ?? '')}') center / cover`,
+});
+
 export type SettingsHost = {
   settings(): Settings;
   update(patch: Partial<Settings>): void;
   asset(name: string): string;
   access(): AccessSnapshot;
-  brand(): { title: string; logo: string };
+  brand(): { title: string; logo: string; description?: string; version?: string };
+  wallpapers(): Wallpaper[];
   docsUrl(): string | undefined;
   openDocs(): void;
   version: string;
@@ -79,7 +88,7 @@ export function createSettingsApp(host: SettingsHost): AppDefinition & { show(se
         <label><span>${t('roles')}</span><span class="settings-tags">${access.roles.map((role) => `<i>${esc(role)}</i>`).join('') || '—'}</span></label>
         <label><span>${t('permissions')}</span><span class="settings-tags">${access.permissions.map((permission) => `<i>${esc(permission)}</i>`).join('') || '—'}</span></label>`;
       case 'webtop': return `<h3>${t('webtop')}</h3><strong class="settings-label">${t('background')}</strong>
-        <div class="wallpaper-selector">${wallpapers.map((wallpaper) => `<button data-wallpaper="${wallpaper.id}" class="wallpaper-option ${settings.wallpaper === wallpaper.id && !settings.customWallpaper ? 'selected' : ''}" style="background:${esc(wallpaper.background(host.asset))}"><span>${esc(wallpaper.title)}</span></button>`).join('')}
+        <div class="wallpaper-selector">${host.wallpapers().map((wallpaper) => `<button data-wallpaper="${wallpaper.id}" class="wallpaper-option ${settings.wallpaper === wallpaper.id && !settings.customWallpaper ? 'selected' : ''}" style="background:${esc(wallpaper.background(host.asset))}"><span>${esc(wallpaper.title)}</span></button>`).join('')}
         <label class="wallpaper-upload ${settings.customWallpaper ? 'selected' : ''}"><input type="file" accept="image/*"/><span>${t('customImage')}</span></label></div>
         <strong class="settings-label">${t('effect')}</strong>
         <div class="effect-selector">${effects.map((id) => `<button data-effect="${id}" class="effect-option ${settings.effect === id ? 'selected' : ''}"><span>${t(`effect_${id}`)}</span></button>`).join('')}</div>`;
@@ -92,7 +101,7 @@ export function createSettingsApp(host: SettingsHost): AppDefinition & { show(se
       case 'about': {
         const brand = host.brand();
         const docs = host.docsUrl();
-        return `<div class="help-content"><img src="${esc(brand.logo)}" alt=""/><h3>${esc(brand.title)}</h3><p>${t('aboutText')}</p><p>${t('version', host.version)}</p>${docs ? `<button class="docs-link" data-docs>${t('openDocs')}</button>` : ''}</div>`;
+        return `<div class="help-content"><img src="${esc(brand.logo)}" alt=""/><h3>${esc(brand.title)}</h3><p>${esc(brand.description ?? t('aboutText'))}</p><p>${t('version', brand.version ?? host.version)}</p>${docs ? `<button class="docs-link" data-docs>${t('openDocs')}</button>` : ''}</div>`;
       }
     }
   };
