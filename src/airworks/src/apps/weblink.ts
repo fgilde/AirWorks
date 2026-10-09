@@ -27,7 +27,6 @@ export function createWebLinkApp(edit: (context: AppContext) => void): AppDefini
     accent: '#00777a',
     width: Math.round(innerWidth * .7),
     height: Math.round(innerHeight * .7),
-    multiple: true,
     menu: [{ id: 'edit', title: t('editWebLink'), icon: 'icon-edit.png', run: edit }],
     render: ({ host, link }) => {
       const url = link?.data.url;

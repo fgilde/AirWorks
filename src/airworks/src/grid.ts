@@ -7,7 +7,7 @@ export type GridItem = Shortcut | Folder;
 export type Page = { id: string; items: GridItem[] };
 
 export type Location = { grid: Page[]; page: number; item: GridItem; folder?: Folder };
-export type DropTarget = { grid: Page[]; page: number; cell: Cell; size: GridSize; folder?: Folder };
+export type DropTarget = { grid: Page[]; page: number; cell: Cell; size: GridSize; folder?: Folder; merge?: boolean };
 
 export const ROOT_SIZE: GridSize = { columns: 5, rows: 3 };
 export const FOLDER_SIZE: GridSize = { columns: 4, rows: 3 };
@@ -66,6 +66,23 @@ export function tidy(root: Page[]) {
   }
 }
 
+export function shiftPlan(page: Page, cell: Cell, size: GridSize, exclude?: GridItem) {
+  const total = size.columns * size.rows;
+  const index = (at: Cell) => at.row * size.columns + at.column;
+  const cellOf = (at: number): Cell => ({ column: at % size.columns, row: Math.floor(at / size.columns) });
+  const occupied = new Map(page.items.filter((item) => item !== exclude).map((item) => [index(item), item]));
+  for (const step of [1, -1]) {
+    const plan = new Map<GridItem, Cell>();
+    let at = index(cell);
+    while (occupied.has(at) && at + step >= 0 && at + step < total) {
+      plan.set(occupied.get(at)!, cellOf(at + step));
+      at += step;
+    }
+    if (!occupied.has(at)) return plan;
+  }
+  return undefined;
+}
+
 export function drop(root: Page[], source: GridItem, target: DropTarget, folderLabel: string): boolean {
   const from = locate(root, source.id);
   const page = target.grid[target.page];
@@ -73,10 +90,16 @@ export function drop(root: Page[], source: GridItem, target: DropTarget, folderL
   const occupant = itemAt(page, target.cell);
   if (occupant === source) return false;
 
-  if (occupant && !target.folder && source.kind === 'app' && occupant.kind === 'folder') {
+  const plan = occupant && !target.merge ? shiftPlan(page, target.cell, target.size, from?.grid === target.grid && from.page === target.page ? source : undefined) : undefined;
+
+  if (plan) {
+    if (from) detach(from);
+    plan.forEach((cell, item) => Object.assign(item, cell));
+    page.items.push(Object.assign(source, target.cell));
+  } else if (occupant && target.merge && source.kind === 'app' && occupant.kind === 'folder') {
     if (from) detach(from);
     place(occupant.pages, source, FOLDER_SIZE);
-  } else if (occupant && !target.folder && source.kind === 'app' && occupant.kind === 'app') {
+  } else if (occupant && target.merge && source.kind === 'app' && occupant.kind === 'app') {
     if (from) detach(from);
     const folder: Folder = { id: id(), kind: 'folder', label: folderLabel, ...target.cell, pages: [newPage()] };
     folder.pages[0].items.push({ ...occupant, column: 0, row: 0 }, Object.assign(source, { column: 1, row: 0 }));

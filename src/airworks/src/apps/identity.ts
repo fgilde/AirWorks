@@ -6,6 +6,7 @@ import { esc } from '../util';
 export function createIdentityApp(store: () => IdentityStore | undefined, access: Access): AppDefinition {
   return {
     id: 'airworks.identity',
+    singleInstance: true,
     title: t('identityAdmin'),
     icon: 'startmenu-user.png',
     accent: '#64549c',

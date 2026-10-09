@@ -133,6 +133,7 @@ export function createSettingsApp(host: SettingsHost): AppDefinition & { show(se
 
   return {
     id: 'airworks.settings',
+    singleInstance: true,
     title: t('settings'),
     icon: 'fn-preferences.png',
     width: 760,

@@ -86,5 +86,5 @@ AirWorks.registerPermissions([
   { id: 'workflow.use', title: 'Use workflows', group: 'Workflow' },
 ]);
 AirWorks.registerApps(apps);
-AirWorks.registerAuthProvider(localAuthProvider(identity, { title: 'Demo users (demo / admin)' }));
+AirWorks.registerAuthProvider(localAuthProvider(identity, { title: 'Demo users', hint: 'Sign in as "demo" (user) or "admin" (administrator). No password needed.' }));
 void AirWorks.loadRemote(`${base}remote/manifest.json`);

@@ -26,6 +26,8 @@ export type WindowHost = {
   startMaximized(): boolean;
   previewDelay(): number;
   taskbarSide(): 'top' | 'right' | 'bottom' | 'left';
+  standalone(): boolean;
+  originOf(state: WindowState): DOMRect | undefined;
   mount(state: WindowState, body: HTMLElement): void;
   unmount(state: WindowState): void;
   menuAction(state: WindowState, action: MenuAction): void;
@@ -73,12 +75,14 @@ export class WindowManager {
     window.addEventListener('keydown', (event) => this.onKey(event));
   }
 
+  get exposedNow() { return this.exposed; }
+
   get active() { return [...this.windows].reverse().find((state) => !state.minimized); }
 
   find(id: number) { return this.windows.find((state) => state.id === id); }
 
-  open(app: AppDefinition, options: { linkId?: string; forceNew?: boolean; appearance?: Appearance; geometry?: Partial<Rect> & { maximized?: boolean; snap?: Zone } } = {}) {
-    const existing = !options.forceNew && this.windows.find((state) => state.app.id === app.id && (!app.multiple || (options.linkId && state.linkId === options.linkId)));
+  open(app: AppDefinition, options: { linkId?: string; forceNew?: boolean; appearance?: Appearance; geometry?: Partial<Rect> & { maximized?: boolean; snap?: Zone }; origin?: DOMRect } = {}) {
+    const existing = !options.forceNew && app.singleInstance && this.windows.find((state) => state.app.id === app.id);
     if (existing) {
       if (options.linkId) existing.linkId = options.linkId;
       this.focus(existing.id);
@@ -101,10 +105,18 @@ export class WindowManager {
     const zone = geometry?.snap ?? (geometry?.maximized || (geometry?.maximized === undefined && this.host.startMaximized()) ? 'top' : undefined);
     if (zone) this.snap(state, zone);
     this.windows.push(state);
-    this.layer.append(this.createElement(state));
-    this.host.mount(state, this.elements.get(state.id)!.querySelector('.window-body')!);
+    const element = this.createElement(state);
+    this.layer.append(element);
+    this.host.mount(state, element.querySelector('.window-body')!);
     this.sync();
+    if (options.origin) this.morph(element, options.origin, state, false);
     return state;
+  }
+
+  private morph(element: HTMLElement, origin: DOMRect, rect: Rect, closing: boolean) {
+    const from = `translate(${origin.left - rect.x}px, ${origin.top - rect.y}px) scale(${origin.width / rect.width}, ${origin.height / rect.height})`;
+    const frames = [{ transform: from, opacity: .2 }, { transform: 'none', opacity: 1 }];
+    return element.animate(closing ? frames.reverse() : frames, { duration: 280, easing: 'cubic-bezier(.22,.61,.36,1)', fill: closing ? 'forwards' : 'none' });
   }
 
   focus(id: number) {
@@ -119,8 +131,16 @@ export class WindowManager {
     const state = this.find(id);
     if (!state) return;
     this.host.unmount(state);
-    this.elements.get(id)?.remove();
+    const element = this.elements.get(id);
+    const target = this.host.originOf(state);
     this.elements.delete(id);
+    if (element) {
+      element.style.pointerEvents = 'none';
+      const animation = target && !state.minimized
+        ? this.morph(element, target, state, true)
+        : element.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.92)' }], { duration: 160, fill: 'forwards' });
+      animation.onfinish = () => element.remove();
+    }
     this.windows = this.windows.filter((candidate) => candidate !== state);
     this.hidePreview();
     this.sync();
@@ -137,6 +157,15 @@ export class WindowManager {
   toggleMaximize(id: number) {
     const state = this.find(id);
     if (state) { this.setMaximized(state, !state.maximized); this.sync(); }
+  }
+
+  flash(id: number) {
+    const element = this.elements.get(id);
+    if (!element) return;
+    element.classList.remove('link-flash');
+    void element.offsetWidth;
+    element.classList.add('link-flash');
+    setTimeout(() => element.classList.remove('link-flash'), 1200);
   }
 
   setAppearance(id: number, appearance: Appearance) {
@@ -238,9 +267,12 @@ export class WindowManager {
     element.dataset.window = String(state.id);
     element.style.setProperty('--accent', state.accent);
     const icon = asset(state.icon);
+    const standalone = this.host.standalone();
     const actions: Array<[MenuAction, string, string]> = [
-      ['update', t('updateLink'), 'action-updateDesktopLink.png'], ['create', t('createLink'), 'action-createDesktopLink.png'],
-      ['duplicate', t('duplicate'), 'action-copy.png'], ['browser', t('openInBrowser'), 'fn-userweblink.png'],
+      ['update', t('updateLink'), 'action-updateDesktopLink.png'],
+      ...(standalone ? [] : [['create', t('createLink'), 'action-createDesktopLink.png']] as Array<[MenuAction, string, string]>),
+      ...(standalone || !state.app.singleInstance ? [['duplicate', t('duplicate'), 'action-copy.png']] as Array<[MenuAction, string, string]> : []),
+      ...(standalone ? [] : [['browser', t('openInBrowser'), 'fn-userweblink.png']] as Array<[MenuAction, string, string]>),
       ...(state.app.menu ?? []).map((item): [MenuAction, string, string] => [`app:${item.id}`, item.title, item.icon]),
     ];
     element.innerHTML = `
@@ -284,9 +316,9 @@ export class WindowManager {
 
   private bindMove(element: HTMLElement, state: WindowState) {
     const header = element.querySelector<HTMLElement>('.window-header')!;
-    header.addEventListener('dblclick', (event) => { if (!(event.target as Element).closest('button')) this.toggleMaximize(state.id); });
+    header.addEventListener('dblclick', (event) => { if (!this.host.standalone() && !(event.target as Element).closest('button')) this.toggleMaximize(state.id); });
     header.addEventListener('pointerdown', (event) => {
-      if (event.button !== 0 || (event.target as Element).closest('button, .window-menu')) return;
+      if (this.host.standalone() || event.button !== 0 || (event.target as Element).closest('button, .window-menu')) return;
       event.preventDefault();
       const origin = { x: event.clientX, y: event.clientY, left: state.x, top: state.y };
       let zone: Zone | undefined;
@@ -417,7 +449,7 @@ export class WindowManager {
 
   private onKey(event: KeyboardEvent) {
     const direction = ({ ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'top', ArrowDown: 'bottom' } as const)[event.key as 'ArrowLeft'];
-    if (!event.ctrlKey || !direction || (event.target as Element).matches?.('input, textarea, select, [contenteditable]')) return;
+    if (!event.ctrlKey || !direction || this.host.standalone() || (event.target as Element).matches?.('input, textarea, select, [contenteditable]')) return;
     const state = this.active;
     if (!state) return;
     event.preventDefault();
@@ -434,7 +466,7 @@ export class WindowManager {
     const width = vertical ? 34 : Math.max(66, Math.min(165, this.tasks.clientWidth / Math.max(1, this.windows.length) - 10));
     const top = this.active;
     const ordered = [...this.windows].sort((a, b) => a.id - b.id);
-    this.tasks.innerHTML = ordered.map((state) => `<button class="task ${state === top ? 'active' : ''}" data-window="${state.id}" style="--accent:${esc(state.accent)};width:${width}px" title="${esc(state.title)}"><span class="task-border"></span><span class="task-icon"><img src="${esc(this.host.asset(state.icon))}" alt="" /></span><span class="task-caption">${esc(state.title)}</span><i class="task-close" title="${t('close')}"></i></button>`).join('');
+    this.tasks.innerHTML = ordered.map((state) => `<button class="task ${state === top ? 'active' : ''}" data-window="${state.id}" style="--accent:${esc(state.accent)};width:${width}px" title="${esc(state.title)}"><span class="task-border"></span><span class="task-icon"><img src="${esc(this.host.asset(state.icon))}" alt="" /></span><span class="task-caption">${esc(state.title)}</span><i class="task-close" title="${t('close')}">×</i></button>`).join('');
     this.tasks.querySelectorAll<HTMLElement>('.task').forEach((task) => {
       const id = Number(task.dataset.window);
       task.addEventListener('click', (event) => {

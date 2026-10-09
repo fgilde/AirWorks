@@ -1,5 +1,5 @@
 import { draggable, type DragHandlers, type DragSession } from './drag';
-import { drop, FOLDER_SIZE, locate, newPage, place, ROOT_SIZE, tidy, type DropTarget, type Folder, type GridItem, type Page, type Shortcut } from './grid';
+import { drop, FOLDER_SIZE, locate, newPage, place, ROOT_SIZE, shiftPlan, tidy, type DropTarget, type Folder, type GridItem, type Page, type Shortcut } from './grid';
 import { fitLayout, PagedGrid } from './grid-view';
 import { t } from './i18n';
 import type { AppDefinition } from './types';
@@ -40,7 +40,7 @@ export class Workspace {
   private openFolder?: Folder;
   private selectedId?: string;
   private readonly trash = document.createElement('div');
-  private drag?: { source: GridItem; createdPages: Page[]; last: DragSession; armed: boolean; wasInFolder: boolean; deletable: boolean; overTrash?: boolean; target?: DropTarget; hoverFolder?: string };
+  private drag?: { source: GridItem; createdPages: Page[]; last: DragSession; armed: boolean; wasInFolder: boolean; deletable: boolean; overTrash?: boolean; target?: DropTarget; hoverFolder?: string; shifted?: { grid: PagedGrid; page: Page } };
   private edgeTimer?: number;
   private edgeDirection = 0;
   private folderTimer?: number;
@@ -160,6 +160,12 @@ export class Workspace {
     return true;
   }
 
+  tileRect(id?: string) {
+    const element = id ? this.root.itemElement(id) ?? (this.openFolder ? this.folderGrid.itemElement(id) : undefined) : undefined;
+    const rect = element && !element.hidden ? element.querySelector('.icon-tile')?.getBoundingClientRect() : undefined;
+    return rect && rect.width ? rect : undefined;
+  }
+
   element(id: string) { return this.root.find(id) ?? (this.openFolder ? this.folderGrid.find(id) : undefined); }
 
   dragNew(element: HTMLElement, app: AppDefinition, onStart?: () => void) {
@@ -275,23 +281,16 @@ export class Workspace {
       element.innerHTML = `<span class="icon-tile"><img src="${esc(this.host.asset(icon))}" alt="" /></span><span class="icon-label">${esc(item.label)}</span>`;
     }
     element.querySelectorAll('img').forEach((image) => image.addEventListener('error', () => { image.src = this.host.asset(app?.icon ?? 'icon-folder.png'); }, { once: true }));
-    let renameTimer: number | undefined;
     element.addEventListener('click', (event) => {
       const target = event.target as Element;
       if (target.closest('input')) return;
-      const wasSelected = this.selectedId === item.id;
       this.select(item.id);
-      if (target.closest('.icon-tile')) {
-        if (item.kind === 'folder') this.openFolderById(item.id);
-        else if (app) { this.host.open(app, item.id); this.closeFolder(); }
-        return;
-      }
-      if (wasSelected && event.detail === 1) renameTimer = window.setTimeout(() => this.rename(item.id), 450);
+      if (!target.closest('.icon-tile')) return;
+      if (item.kind === 'folder') this.openFolderById(item.id);
+      else if (app) { this.host.open(app, item.id); this.closeFolder(); }
     });
     element.addEventListener('dblclick', (event) => {
-      if ((event.target as Element).closest('.icon-tile, input')) return;
-      clearTimeout(renameTimer);
-      this.rename(item.id);
+      if (!(event.target as Element).closest('.icon-tile, input')) this.rename(item.id);
     });
     draggable(element, (session) => this.beginDrag(session, item));
     return element;
@@ -365,9 +364,15 @@ export class Workspace {
     this.edge(drag.armed ? direction : 0, x, y);
 
     const cell = grid.cellAt(x, y);
-    drag.target = cell ? { grid: pages, page: grid.current, cell, size: folder ? FOLDER_SIZE : ROOT_SIZE, folder } : undefined;
-    const occupant = cell ? pages[grid.current]?.items.find((item) => item.column === cell.column && item.row === cell.row && item !== drag.source) : undefined;
-    const merge = Boolean(occupant && !folder && drag.source.kind === 'app');
+    const page = pages[grid.current];
+    const size = folder ? FOLDER_SIZE : ROOT_SIZE;
+    const occupant = cell ? page?.items.find((item) => item.column === cell.column && item.row === cell.row && item !== drag.source) : undefined;
+    const merge = Boolean(occupant && !folder && drag.source.kind === 'app' && grid.isCenter(x, y, cell!));
+    drag.target = cell ? { grid: pages, page: grid.current, cell, size, folder, merge } : undefined;
+    const plan = occupant && !merge && page ? shiftPlan(page, cell!, size, page.items.includes(drag.source) ? drag.source : undefined) : undefined;
+    if (drag.shifted && (drag.shifted.grid !== grid || drag.shifted.page !== page)) drag.shifted.grid.preview(drag.shifted.page);
+    grid.preview(page, plan);
+    drag.shifted = page && { grid, page };
     this.desktop.querySelectorAll('.drop-target').forEach((element) => element.classList.remove('drop-target'));
     if (merge) grid.itemElement(occupant!.id)?.classList.add('drop-target');
     grid.showPlaceholder(merge ? undefined : cell);
@@ -388,6 +393,8 @@ export class Workspace {
     if (!drag.overTrash) return false;
     drag.target = undefined;
     drag.hoverFolder = undefined;
+    drag.shifted?.grid.preview(drag.shifted.page);
+    drag.shifted = undefined;
     clearTimeout(this.folderTimer);
     this.edge(0, x, y);
     this.root.showPlaceholder(undefined);

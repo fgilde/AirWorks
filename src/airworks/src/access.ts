@@ -132,12 +132,13 @@ export function httpIdentityStore(request: <T>(path: string, init?: RequestInit)
   };
 }
 
-export function localAuthProvider(store: IdentityStore, options: { id?: string; title?: string } = {}): AuthProvider {
+export function localAuthProvider(store: IdentityStore, options: { id?: string; title?: string; hint?: string } = {}): AuthProvider {
   const key = `airworks.local-session.${options.id ?? 'local'}`;
   const toSession = (user: UserRecord): Session => ({ identity: { id: user.id, displayName: user.displayName, email: user.email }, roles: user.roles });
   return {
     id: options.id ?? 'local',
     title: options.title ?? 'Local user',
+    hint: options.hint,
     fields: [{ name: 'userName', label: 'userName' }] satisfies LoginField[],
     async login(values) {
       const userName = String((values as Record<string, unknown> | undefined)?.userName ?? '').trim().toLowerCase();

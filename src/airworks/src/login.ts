@@ -7,6 +7,7 @@ export type LoginHost = {
   brand(): { title: string; logo: string };
   guestAllowed(): boolean;
   target(): HTMLElement;
+  opened(): void;
   closed(): void;
 };
 
@@ -20,15 +21,35 @@ export class LoginView {
 
   get visible() { return this.view.classList.contains('visible'); }
 
-  show(busy = false) {
+  show(busy = false, origin?: DOMRect) {
+    this.host.opened();
     this.render(busy);
     this.card.removeAttribute('style');
     this.card.classList.remove('flying', 'closing');
     this.view.classList.remove('closing');
     this.view.classList.add('visible');
     this.view.ariaHidden = 'false';
-    requestAnimationFrame(() => this.card.classList.add('shown'));
-    if (!busy) requestAnimationFrame(() => this.card.querySelector<HTMLElement>('input, .login-provider')?.focus());
+    const focus = () => { if (!busy) this.card.querySelector<HTMLElement>('input, .login-provider')?.focus(); };
+    if (!origin) {
+      requestAnimationFrame(() => this.card.classList.add('shown'));
+      requestAnimationFrame(focus);
+      return;
+    }
+    this.card.classList.add('shown');
+    const to = this.card.getBoundingClientRect();
+    const from = origin;
+    this.card.classList.add('flying', 'closing');
+    this.view.classList.add('closing');
+    Object.assign(this.card.style, { left: `${from.left + from.width / 2 - 15.5}px`, top: `${from.top + from.height / 2 - 15.5}px`, width: '31px', height: '31px' });
+    void this.card.offsetWidth;
+    this.card.classList.remove('closing');
+    this.view.classList.remove('closing');
+    Object.assign(this.card.style, { left: `${to.left}px`, top: `${to.top}px`, width: `${to.width}px`, height: `${to.height}px` });
+    setTimeout(() => {
+      this.card.classList.remove('flying');
+      this.card.removeAttribute('style');
+      focus();
+    }, 1000);
   }
 
   hide() {
@@ -56,6 +77,7 @@ export class LoginView {
     const providers = [...runtime.access.providers.values()];
     this.card.innerHTML = `<header><span class="login-logo" style="--logo:url('${esc(brand.logo)}')"></span><strong>${esc(brand.title)}</strong></header>
       ${busy ? '<div class="login-busy"></div>' : providers.map((provider) => this.provider(provider)).join('')}
+      ${!busy && runtime.options.loginHint ? `<p class="login-hint">${esc(runtime.options.loginHint)}</p>` : ''}
       <p class="login-error" role="alert"></p>
       ${!busy && this.host.guestAllowed() ? `<button class="login-guest">${t('continueAsGuest')}</button>` : ''}`;
     this.card.querySelectorAll<HTMLElement>('.login-provider').forEach((button) => button.addEventListener('click', () => this.login(button.dataset.provider!)));
@@ -68,13 +90,13 @@ export class LoginView {
 
   private provider(provider: AuthProvider) {
     if (!provider.fields?.length) {
-      return `<button class="login-provider" data-provider="${esc(provider.id)}">${provider.icon ? `<img src="${esc(runtime.asset(provider.icon))}" alt=""/>` : ''}${esc(t('signInWith', provider.title))}</button>`;
+      return `<button class="login-provider" data-provider="${esc(provider.id)}">${provider.icon ? `<img src="${esc(runtime.asset(provider.icon))}" alt=""/>` : ''}${esc(t('signInWith', provider.title))}</button>${provider.hint ? `<small class="login-provider-hint">${esc(provider.hint)}</small>` : ''}`;
     }
     const last = provider.fields.length - 1;
     return `<form class="login-form" data-provider="${esc(provider.id)}">${runtime.access.providers.size > 1 ? `<small>${esc(provider.title)}</small>` : ''}
       ${provider.fields.map((field, index) => `<label class="login-field"><img src="${esc(runtime.asset(field.type === 'password' ? 'login-password.png' : 'login-user.png'))}" alt=""/>
         <input name="${esc(field.name)}" type="${esc(field.type ?? 'text')}" placeholder="${esc(label(field.label))}" aria-label="${esc(label(field.label))}" required/>
-        ${index === last ? `<button type="submit" aria-label="${t('login')}"><img src="${esc(runtime.asset('login-arrow.png'))}" alt=""/></button>` : ''}</label>`).join('')}</form>`;
+        ${index === last ? `<button type="submit" aria-label="${t('login')}"><img src="${esc(runtime.asset('login-arrow.png'))}" alt=""/></button>` : ''}</label>`).join('')}${provider.hint ? `<small class="login-provider-hint">${esc(provider.hint)}</small>` : ''}</form>`;
   }
 
   private async login(providerId: string, values?: unknown) {

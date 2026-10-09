@@ -80,6 +80,26 @@ export class PagedGrid {
     return column >= 0 && column < this.size.columns && row >= 0 && row < this.size.rows ? { column, row } : undefined;
   }
 
+  isCenter(x: number, y: number, cell: Cell) {
+    const rect = this.element.getBoundingClientRect();
+    const { left, top } = this.pixel(cell);
+    const { icon } = this.metrics;
+    const tile = icon * .75;
+    const inset = tile * .2;
+    const tileLeft = rect.left + left + icon * .125;
+    const tileTop = rect.top + top + icon * .125;
+    return x >= tileLeft + inset && x <= tileLeft + tile - inset && y >= tileTop + inset && y <= tileTop + tile - inset;
+  }
+
+  preview(page: Page | undefined, plan?: Map<GridItem, Cell>) {
+    for (const item of page?.items ?? []) {
+      const element = this.itemElement(item.id);
+      if (!element) continue;
+      const { left, top } = this.pixel(plan?.get(item) ?? item);
+      Object.assign(element.style, { left: `${left}px`, top: `${top}px` });
+    }
+  }
+
   showPlaceholder(cell?: Cell) {
     this.placeholder.classList.toggle('visible', Boolean(cell));
     if (!cell) return;

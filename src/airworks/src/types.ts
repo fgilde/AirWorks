@@ -86,6 +86,7 @@ export type AuthProvider = {
   title: string;
   icon?: string;
   fields?: LoginField[];
+  hint?: string;
   login: (options?: unknown) => Promise<Session | void>;
   logout?: (session?: Session) => Promise<void> | void;
   restore?: () => Promise<Session | undefined> | Session | undefined;
@@ -140,7 +141,7 @@ export type AppDefinition = {
   height?: number;
   requiredPermissions?: string[];
   hidden?: boolean;
-  multiple?: boolean;
+  singleInstance?: boolean;
   search?: (query: string, context: SearchContext) => Promise<SearchHit[]> | SearchHit[];
   menu?: WindowMenuItem[];
   render?: (context: AppContext) => string | Node | void | Promise<string | Node | void>;
@@ -161,6 +162,7 @@ export type AirWorksOptions = {
   serverBaseUrl?: string;
   request?: <T = unknown>(path: string, init?: RequestInit) => Promise<T>;
   requireLogin?: boolean;
+  loginHint?: string;
   identityStore?: IdentityStore;
   accessProvider?: (session?: Session) => Promise<Partial<AccessSnapshot>> | Partial<AccessSnapshot>;
   brand?: Brand;

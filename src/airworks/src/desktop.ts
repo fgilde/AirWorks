@@ -37,6 +37,8 @@ export class AirDesktop extends HTMLElement {
   private saveTimer?: number;
   private standaloneWindow?: SavedWindow;
   private stopEffect?: () => void;
+  private profileWindows: SavedWindow[] = [];
+  private logoutOrigin?: DOMRect;
 
   private $<T extends HTMLElement = HTMLElement>(selector: string) { return this.querySelector<T>(selector)!; }
 
@@ -61,6 +63,8 @@ export class AirDesktop extends HTMLElement {
       startMaximized: () => this.settings.startMaximized,
       previewDelay: () => this.settings.instantPreview ? 0 : 250,
       taskbarSide: () => this.settings.taskbarPosition,
+      standalone: () => this.standalone,
+      originOf: (state) => this.windows.exposedNow ? undefined : this.workspace.tileRect(state.linkId),
       mount: (state, body) => void this.mount(state, body),
       unmount: (state) => { this.cleanups.get(state.id)?.forEach((cleanup) => cleanup()); this.cleanups.delete(state.id); this.contexts.delete(state.id); this.intents.delete(state.id); },
       menuAction: (state, action) => this.menuAction(state, action),
@@ -87,6 +91,7 @@ export class AirDesktop extends HTMLElement {
       brand: () => this.brand(),
       guestAllowed: () => !this.loginRequired,
       target: () => this.$('.start-button'),
+      opened: () => this.$('.start-button').classList.add('aw-start-hidden'),
       closed: () => this.revealStartButton(),
     });
 
@@ -210,8 +215,8 @@ export class AirDesktop extends HTMLElement {
     this.$('.settings-button').addEventListener('click', () => { this.settingsApp.show('common'); this.launch(this.settingsApp.id); });
     this.$('.about-button').addEventListener('click', () => { this.settingsApp.show('about'); this.launch(this.settingsApp.id); });
     this.$('.docs-button').addEventListener('click', () => this.launch(DOCS));
-    this.querySelectorAll('.logout').forEach((button) => button.addEventListener('click', () => {
-      if (runtime.access.session) void this.logout(); else this.showLogin(true);
+    this.querySelectorAll<HTMLElement>('.logout').forEach((button) => button.addEventListener('click', () => {
+      if (runtime.access.session) void this.logout(button); else this.showLogin(true);
     }));
     const desktopButton = this.$('.desktop-button');
     let peekTimer: number | undefined;
@@ -372,7 +377,7 @@ export class AirDesktop extends HTMLElement {
     const appearance = shortcut?.data ? { title: shortcut.label, ...appearanceOf(shortcut, app) } : undefined;
     const intent = options.intent ?? shortcut?.intent;
     this.nextIntent = intent;
-    const state = this.windows.open(app, { ...options, appearance });
+    const state = this.windows.open(app, { ...options, appearance, origin: this.standalone ? undefined : this.workspace.tileRect(options.linkId) });
     if (this.nextIntent) {
       state.intent = intent;
       this.intents.get(state.id)?.forEach((callback) => callback(this.nextIntent!));
@@ -436,9 +441,9 @@ export class AirDesktop extends HTMLElement {
       if (item && context) item.run(context);
       return;
     }
-    if (action === 'duplicate') { this.open(state.app, { linkId: state.linkId, forceNew: true, intent: state.intent }); return; }
+    if (action === 'duplicate' && !this.standalone) { this.open(state.app, { linkId: state.linkId, forceNew: true, intent: state.intent }); return; }
     if (action === 'browser' && context?.link?.data.url) { window.open(context.link.data.url, '_blank', 'noopener'); return; }
-    if (action === 'browser') {
+    if (action === 'browser' || action === 'duplicate') {
       const url = new URL(location.href);
       url.search = '';
       url.searchParams.set('app', state.app.id);
@@ -452,6 +457,7 @@ export class AirDesktop extends HTMLElement {
       if (!link) return;
       this.workspace.update(link.id, { intent: state.intent, label: this.settings.overwriteName ? state.stateTitle ?? state.title : link.label });
       this.workspace.flash(link.id);
+      this.windows.flash(state.id);
       return;
     }
     if (action !== 'create') return;
@@ -473,7 +479,7 @@ export class AirDesktop extends HTMLElement {
     if (!runtime.apps.has('airworks.identity')) runtime.registerApp(createIdentityApp(() => runtime.options.identityStore, runtime.access));
     if (runtime.options.webLinks !== false && !runtime.apps.has(WEB_LINK)) runtime.registerApp(createWebLinkApp((context) => void this.editWebLink(context)));
     if (!runtime.apps.has(DOCS)) runtime.registerApp({
-      id: DOCS, title: t('docs'), icon: 'fn-help.png', accent: '#35496b', hidden: true,
+      id: DOCS, title: t('docs'), icon: 'fn-help.png', accent: '#35496b', hidden: true, singleInstance: true,
       width: Math.round(innerWidth * .75), height: Math.round(innerHeight * .8),
       render: ({ host }) => {
         host.classList.add('frame');
@@ -551,6 +557,7 @@ export class AirDesktop extends HTMLElement {
     const profile = locked ? {} : await this.profileStore().load(key).catch(() => undefined) as Profile ?? {};
     if (this.profileKey !== key) return;
     this.settings = { ...defaultSettings, ...runtime.options.defaults, ...profile.settings } as Settings;
+    this.profileWindows = profile.windows ?? [];
     this.workspace.load(profile.workspace);
     if (!profile.workspace && !locked) (runtime.options.initialShortcuts ?? []).forEach((id) => {
       const app = runtime.apps.get(id);
@@ -563,18 +570,19 @@ export class AirDesktop extends HTMLElement {
     this.applySettings();
     this.renderStartMenu();
     this.openPending();
-    if (locked) this.login.show();
+    if (locked) this.login.show(false, this.logoutOrigin);
+    this.logoutOrigin = undefined;
   }
 
   private profileStore() { return runtime.options.profileStore ?? localProfileStore(); }
 
   private profile(): Profile {
     const windows = this.windows.windows.map((state): SavedWindow => ({ appId: state.app.id, x: state.x, y: state.y, width: state.width, height: state.height, maximized: state.maximized, snap: state.snap, linkId: state.linkId, intent: state.intent }));
-    return { settings: this.settings, workspace: this.workspace.toJSON(), windows: [...windows, ...this.pendingWindows] };
+    return { settings: this.settings, workspace: this.workspace.toJSON(), windows: this.standalone ? this.profileWindows : [...windows, ...this.pendingWindows] };
   }
 
   private saveProfile() {
-    if (this.loadingProfile || this.standalone) return;
+    if (this.loadingProfile) return;
     clearTimeout(this.saveTimer);
     const key = this.profileKey;
     this.saveTimer = window.setTimeout(() => {
@@ -607,8 +615,9 @@ export class AirDesktop extends HTMLElement {
     });
   }
 
-  private async logout() {
-    this.$('.air-shell').classList.add('logging-out');
+  private async logout(origin?: HTMLElement) {
+    this.logoutOrigin = origin?.getBoundingClientRect();
+    if (!this.loginRequired) this.$('.air-shell').classList.add('logging-out');
     this.toggleStart(false);
     await this.flushProfile();
     await runtime.access.logout();
