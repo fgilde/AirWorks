@@ -115,7 +115,7 @@ export class WindowManager {
 
   private morph(element: HTMLElement, origin: DOMRect, rect: Rect, closing: boolean) {
     const from = `translate(${origin.left - rect.x}px, ${origin.top - rect.y}px) scale(${origin.width / rect.width}, ${origin.height / rect.height})`;
-    const frames = [{ transform: from, opacity: .2 }, { transform: 'none', opacity: 1 }];
+    const frames = [{ transformOrigin: '0 0', transform: from, opacity: .2 }, { transformOrigin: '0 0', transform: 'none', opacity: 1 }];
     return element.animate(closing ? frames.reverse() : frames, { duration: 280, easing: 'cubic-bezier(.22,.61,.36,1)', fill: closing ? 'forwards' : 'none' });
   }
 
