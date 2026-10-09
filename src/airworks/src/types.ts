@@ -104,6 +104,7 @@ export type AppContext = {
   link?: LinkInfo;
   intent?: Intent;
   onIntent: (callback: (intent: Intent) => void) => void;
+  setState: (state: Intent, title?: string) => void;
 };
 
 export type AppDefinition = {

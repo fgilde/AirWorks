@@ -1,6 +1,7 @@
 .function-toolbar { height: 36px; display: flex; gap: 1px; margin: -8px -8px 8px; background: #edf0f4; border-bottom: 1px solid #c7cbd1; }
 .function-toolbar button { min-width: 76px; border: 0; border-right: 1px solid #d5d8dc; background: transparent; font-size: 12px; cursor: pointer; }
 .function-toolbar button:hover { background: white; }
+.function-toolbar select { min-width: 180px; margin: 4px 6px; border: 1px solid #c7cbd1; background: white; font-size: 12px; }
 .data-grid { width: 100%; border-collapse: collapse; font-size: 12px; }
 .data-grid th { height: 31px; padding: 6px 9px; text-align: left; font-weight: 600; color: #35496b; background: #eef1f5; border: 1px solid #d4d8dc; }
 .data-grid td { height: 30px; padding: 5px 9px; border: 1px solid #dedede; text-align: right; }
@@ -25,10 +26,10 @@
 .demo-counter output { font-size: 64px; color: var(--accent); }
 .demo-counter button { padding: 8px 24px; border: 0; background: var(--accent); color: white; font-size: 16px; cursor: pointer; }
 
-.key-ratios { height: calc(100% + 16px); display: flex; margin: -8px; color: #2b3a52; background: #f4f6f9; }
-.key-ratios aside { width: 290px; flex: 0 0 290px; display: flex; flex-direction: column; background: white; border-right: 1px solid #e3e7ec; }
+.key-ratios { --group: var(--accent); height: calc(100% + 16px); display: flex; margin: -8px; color: #2b3a52; background: white; }
+.key-ratios aside { width: 290px; flex: 0 0 290px; display: flex; flex-direction: column; background: #fafbfc; border-right: 1px solid #e8ecf1; }
 .kr-search { padding: 12px; border-bottom: 1px solid #eef1f4; }
-.kr-search input { width: 100%; height: 34px; padding: 4px 12px; border: 1px solid #d8dde4; border-radius: 17px; background: #f7f9fb; outline-color: var(--accent); }
+.kr-search input { width: 100%; height: 34px; padding: 4px 12px; border: 1px solid #d8dde4; border-radius: 17px; background: white; outline-color: var(--accent); }
 .key-ratios nav { flex: 1; overflow-y: auto; padding: 6px 0 12px; }
 .key-ratios nav section { margin-top: 6px; }
 .key-ratios nav h3 { display: flex; align-items: center; gap: 10px; margin: 8px 12px 4px; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #6b778a; }
@@ -37,7 +38,7 @@
 .kr-chip img { width: 70%; height: 70%; object-fit: contain; }
 .kr-chip.large { width: 52px; height: 52px; flex-basis: 52px; border-radius: 12px; }
 .key-ratios nav button { width: calc(100% - 16px); display: block; margin: 1px 8px; padding: 7px 12px 7px 48px; border: 0; border-radius: 6px; background: transparent; text-align: left; cursor: pointer; transition: background .15s, color .15s; }
-.key-ratios nav button:hover { background: #f1f4f7; }
+.key-ratios nav button:hover { background: #eef1f5; }
 .key-ratios nav button.selected { color: white; background: var(--group); }
 .key-ratios nav button strong { display: block; font-size: 13px; font-weight: 600; }
 .key-ratios nav button small { display: block; font-size: 11px; opacity: .7; }
@@ -46,7 +47,7 @@
 .key-ratios article header { display: flex; align-items: center; gap: 16px; }
 .key-ratios article header small { color: #6b778a; font-size: 12px; letter-spacing: .04em; }
 .key-ratios article h2 { margin: 2px 0 0; font-size: 30px; font-weight: 400; color: var(--group); }
-.kr-card { padding: 20px 24px; background: white; border-radius: 10px; box-shadow: 0 1px 3px rgba(20,40,70,.08), 0 6px 20px rgba(20,40,70,.05); }
+.kr-card { padding: 20px 24px; background: white; border: 1px solid #e8ecf1; border-radius: 10px; }
 .kr-formula { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
 .kr-fraction { display: flex; flex-direction: column; min-width: 240px; flex: 1; }
 .kr-fraction label { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; font-size: 14px; }

@@ -3,7 +3,9 @@ import type { AppDefinition, AccessSnapshot } from '../types';
 import { esc } from '../util';
 
 export type TaskbarSide = 'top' | 'right' | 'bottom' | 'left';
-export type Effect = 'none' | 'bubble' | 'snow' | 'starfield';
+import { effects, type Effect } from '../effects';
+
+export type { Effect };
 
 export type Settings = {
   askBeforeClose: boolean;
@@ -42,7 +44,6 @@ export const wallpapers: Wallpaper[] = [
 ];
 
 const systemColors = [['#35496b', 'Blue'], ['#447d1c', 'Green'], ['#8d4085', 'Violet'], ['#555b66', 'Graphite'], ['#a2273b', 'Red'], ['#00777a', 'Teal']];
-const effects: Array<[Effect, MessageKey]> = [['none', 'noEffect'], ['bubble', 'bubbles'], ['snow', 'snow'], ['starfield', 'starfield']];
 const sides: Array<[TaskbarSide, MessageKey]> = [['top', 'top'], ['right', 'right'], ['bottom', 'bottom'], ['left', 'left']];
 
 export type SettingsHost = {
@@ -81,12 +82,13 @@ export function createSettingsApp(host: SettingsHost): AppDefinition & { show(se
         <div class="wallpaper-selector">${wallpapers.map((wallpaper) => `<button data-wallpaper="${wallpaper.id}" class="wallpaper-option ${settings.wallpaper === wallpaper.id && !settings.customWallpaper ? 'selected' : ''}" style="background:${esc(wallpaper.background(host.asset))}"><span>${esc(wallpaper.title)}</span></button>`).join('')}
         <label class="wallpaper-upload ${settings.customWallpaper ? 'selected' : ''}"><input type="file" accept="image/*"/><span>${t('customImage')}</span></label></div>
         <strong class="settings-label">${t('effect')}</strong>
-        <div class="effect-selector">${effects.map(([id, label]) => `<button data-effect="${id}" class="effect-option ${settings.effect === id ? 'selected' : ''}"><span>${t(label)}</span></button>`).join('')}</div>`;
+        <div class="effect-selector">${effects.map((id) => `<button data-effect="${id}" class="effect-option ${settings.effect === id ? 'selected' : ''}"><span>${t(`effect_${id}`)}</span></button>`).join('')}</div>`;
       case 'taskbar': return `<h3>${t('taskbar')}</h3><p class="settings-hint">${t('taskbarHint')}</p>
         <div class="taskbar-position-selector">${sides.map(([id, label]) => `<button data-taskbar-position="${id}" class="${settings.taskbarPosition === id ? 'selected' : ''}"><span class="taskbar-diagram ${id}"></span><strong>${t(label)}</strong></button>`).join('')}</div>
         ${checkbox('hideTaskbar', 'hideTaskbar')}${checkbox('instantPreview', 'instantPreview')}`;
       case 'colors': return `<h3>${t('colors')}</h3><strong class="settings-label">${t('appColors')}</strong>
-        <div class="color-selector">${systemColors.map(([color, title]) => `<button data-system-color="${color}" class="${(settings.systemColor ?? '#35496b') === color ? 'selected' : ''}" style="background:${color}">${title}</button>`).join('')}</div>`;
+        <div class="color-selector">${systemColors.map(([color, title]) => `<button data-system-color="${color}" class="${(settings.systemColor ?? '#35496b') === color ? 'selected' : ''}" style="background:${color}">${title}</button>`).join('')}
+        <label class="custom-color ${systemColors.some(([color]) => color === (settings.systemColor ?? '#35496b')) ? '' : 'selected'}" style="background:${esc(settings.systemColor ?? '#35496b')}"><input type="color" value="${esc(settings.systemColor ?? '#35496b')}" /><span>${t('customColor')}</span></label></div>`;
       case 'about': {
         const brand = host.brand();
         const docs = host.docsUrl();
@@ -109,6 +111,8 @@ export function createSettingsApp(host: SettingsHost): AppDefinition & { show(se
     on('[data-effect]', 'click', (element) => apply({ effect: element.dataset.effect as Effect }));
     on('[data-taskbar-position]', 'click', (element) => apply({ taskbarPosition: element.dataset.taskbarPosition as TaskbarSide }));
     on('[data-system-color]', 'click', (element) => apply({ systemColor: element.dataset.systemColor }));
+    on('.custom-color input', 'input', (element) => host.update({ systemColor: (element as HTMLInputElement).value }));
+    on('.custom-color input', 'change', () => render(root));
     on('.wallpaper-upload input', 'change', (element) => {
       const file = (element as HTMLInputElement).files?.[0];
       if (!file) return;

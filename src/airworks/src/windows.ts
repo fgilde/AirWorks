@@ -14,6 +14,8 @@ export type WindowState = Rect & {
   maximized: boolean;
   snap?: Zone;
   restore?: Rect;
+  intent?: Record<string, string>;
+  stateTitle?: string;
   linkId?: string;
 };
 export type MenuAction = 'update' | 'create' | 'duplicate' | 'browser' | `app:${string}`;
@@ -58,6 +60,7 @@ export class WindowManager {
   private readonly elements = new Map<number, HTMLElement>();
   private nextId = 1;
   private previewTimer?: number;
+  private previewHideTimer?: number;
   private exposed = false;
 
   constructor(
@@ -441,11 +444,13 @@ export class WindowManager {
       });
       task.addEventListener('pointerenter', () => {
         clearTimeout(this.previewTimer);
-        this.previewTimer = window.setTimeout(() => this.showPreview(task, id), this.host.previewDelay());
+        clearTimeout(this.previewHideTimer);
+        const visible = this.preview.classList.contains('visible');
+        this.previewTimer = window.setTimeout(() => this.showPreview(task, id), visible ? 0 : this.host.previewDelay());
       });
       task.addEventListener('pointerleave', () => {
         clearTimeout(this.previewTimer);
-        setTimeout(() => { if (!this.preview.matches(':hover')) this.hidePreview(); }, 80);
+        this.schedulePreviewHide();
       });
     });
   }
@@ -457,18 +462,28 @@ export class WindowManager {
     this.preview.innerHTML = `<header style="--accent:${esc(state.accent)}"><span class="preview-icon"><img src="${esc(this.host.asset(state.icon))}" alt=""/></span><span>${esc(state.title)}</span><button title="${t('close')}">×</button></header><div class="preview-content"></div>`;
     this.preview.querySelector('.preview-content')!.append(this.snapshot(id, 220, 150));
     const rect = task.getBoundingClientRect();
+    const { offsetWidth: width, offsetHeight: height } = this.preview;
+    const gap = 50;
     this.preview.className = `task-preview preview-${side} visible`;
     if (side === 'top' || side === 'bottom') {
-      this.preview.style.left = `${Math.max(0, Math.min(innerWidth - 260, rect.left + rect.width / 2 - 130))}px`;
-      this.preview.style.top = side === 'top' ? '50px' : `${innerHeight - 215}px`;
+      const left = clamp(rect.left + rect.width / 2 - width / 2, 6, innerWidth - width - 6);
+      Object.assign(this.preview.style, { left: `${left}px`, top: `${side === 'top' ? gap : innerHeight - gap - height}px` });
+      this.preview.style.setProperty('--arrow', `${rect.left + rect.width / 2 - left}px`);
     } else {
-      this.preview.style.left = side === 'left' ? '50px' : `${innerWidth - 270}px`;
-      this.preview.style.top = `${Math.max(0, Math.min(innerHeight - 205, rect.top + rect.height / 2 - 102))}px`;
+      const top = clamp(rect.top + rect.height / 2 - height / 2, 6, innerHeight - height - 6);
+      Object.assign(this.preview.style, { top: `${top}px`, left: `${side === 'left' ? gap : innerWidth - gap - width}px` });
+      this.preview.style.setProperty('--arrow', `${rect.top + rect.height / 2 - top}px`);
     }
     this.preview.ariaHidden = 'false';
     this.preview.querySelector('button')!.onclick = (event) => { event.stopPropagation(); this.close(id); };
     this.preview.onclick = () => { this.focus(id); this.hidePreview(); };
-    this.preview.onpointerleave = () => this.hidePreview();
+    this.preview.onpointerenter = () => clearTimeout(this.previewHideTimer);
+    this.preview.onpointerleave = () => this.schedulePreviewHide();
+  }
+
+  private schedulePreviewHide() {
+    clearTimeout(this.previewHideTimer);
+    this.previewHideTimer = window.setTimeout(() => this.hidePreview(), 150);
   }
 
   hidePreview() {

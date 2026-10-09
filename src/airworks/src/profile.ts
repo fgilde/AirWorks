@@ -4,7 +4,7 @@ import { readJson, writeJson } from './util';
 import type { Zone } from './windows';
 import type { WorkspaceState } from './workspace';
 
-export type SavedWindow = { appId: string; x: number; y: number; width: number; height: number; maximized: boolean; snap?: Zone; linkId?: string };
+export type SavedWindow = { appId: string; x: number; y: number; width: number; height: number; maximized: boolean; snap?: Zone; linkId?: string; intent?: Record<string, string> };
 
 export type Profile = { settings?: Partial<Settings>; workspace?: WorkspaceState; windows?: SavedWindow[] };
 

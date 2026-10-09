@@ -2,6 +2,7 @@ import { createIdentityApp } from './apps/identity';
 import { createWebLinkApp, editWebLink, WEB_LINK } from './apps/weblink';
 import { createSettingsApp, defaultSettings, wallpapers, type Settings } from './apps/settings';
 import { getLocale, setLocale, t } from './i18n';
+import { startEffect } from './effects';
 import { LoginView } from './login';
 import { localProfileStore, type Profile, type SavedWindow } from './profile';
 import { runtime } from './runtime';
@@ -35,6 +36,7 @@ export class AirDesktop extends HTMLElement {
   private loadingProfile = true;
   private saveTimer?: number;
   private standaloneWindow?: SavedWindow;
+  private stopEffect?: () => void;
 
   private $<T extends HTMLElement = HTMLElement>(selector: string) { return this.querySelector<T>(selector)!; }
 
@@ -103,7 +105,9 @@ export class AirDesktop extends HTMLElement {
     if (standaloneApp) {
       this.standalone = true;
       this.classList.add('standalone-mode');
-      this.standaloneWindow = { appId: standaloneApp, linkId: new URLSearchParams(location.search).get('link') ?? undefined, x: 0, y: 0, width: innerWidth, height: innerHeight, maximized: true };
+      const query = new URLSearchParams(location.search);
+      const intent = query.get('intent');
+      this.standaloneWindow = { appId: standaloneApp, linkId: query.get('link') ?? undefined, intent: intent ? JSON.parse(intent) : undefined, x: 0, y: 0, width: innerWidth, height: innerHeight, maximized: true };
     }
     const restored = runtime.access.restore().catch(() => undefined);
     if (this.loginRequired) {
@@ -268,13 +272,8 @@ export class AirDesktop extends HTMLElement {
   }
 
   private renderEffect() {
-    const layer = this.$('.wallpaper-effect');
-    const effect = this.settings.effect;
-    layer.className = `wallpaper-effect effect-${effect}`;
-    if (effect === 'bubble') layer.innerHTML = Array.from({ length: 8 }, (_, index) => `<i class="bubble" style="left:${(index * 29 + 7) % 92}%;animation-delay:-${index * 2.1}s;animation-duration:${13 + index * 1.7}s"><img src="${esc(this.brand().logo)}" alt=""/></i>`).join('');
-    else if (effect === 'snow') layer.innerHTML = Array.from({ length: 300 }, (_, index) => `<i class="flake" style="left:${(index * 37) % 100}%;top:${(index * 61) % 100}%;font-size:${6 + (index % 12)}px;animation-delay:-${(index % 40) / 3}s;animation-duration:${8 + (index % 9)}s">•</i>`).join('');
-    else if (effect === 'starfield') layer.innerHTML = Array.from({ length: 200 }, (_, index) => `<i class="star" style="left:${(index * 43) % 100}%;top:${(index * 67) % 100}%;width:${1 + (index % 3)}px;height:${1 + (index % 3)}px;animation-delay:-${index % 5}s"></i>`).join('');
-    else layer.innerHTML = '';
+    this.stopEffect?.();
+    this.stopEffect = startEffect(this.$('.wallpaper-effect'), this.settings.effect, this.brand().logo);
   }
 
   private toggleStart(force?: boolean) {
@@ -365,9 +364,13 @@ export class AirDesktop extends HTMLElement {
     }
     const shortcut = this.workspace.shortcut(options.linkId);
     const appearance = shortcut?.data ? { title: shortcut.label, ...appearanceOf(shortcut, app) } : undefined;
-    this.nextIntent = options.intent;
+    const intent = options.intent ?? shortcut?.intent;
+    this.nextIntent = intent;
     const state = this.windows.open(app, { ...options, appearance });
-    if (this.nextIntent) this.intents.get(state.id)?.forEach((callback) => callback(this.nextIntent!));
+    if (this.nextIntent) {
+      state.intent = intent;
+      this.intents.get(state.id)?.forEach((callback) => callback(this.nextIntent!));
+    }
     this.nextIntent = undefined;
     this.emit('airworks:app-opened', { appId: app.id, windowId: state.id });
     return state;
@@ -380,11 +383,17 @@ export class AirDesktop extends HTMLElement {
     const workspace = this.workspace;
     const intent = this.nextIntent;
     this.nextIntent = undefined;
+    state.intent = intent;
     const listeners: Array<(intent: Intent) => void> = [];
     this.intents.set(state.id, listeners);
     const context: AppContext = {
       intent,
       onIntent: (callback) => listeners.push(callback),
+      setState: (next, title) => {
+        state.intent = next;
+        state.stateTitle = title;
+        this.saveProfile();
+      },
       host: body, appId: state.app.id, windowId: state.id,
       get session() { return access.session; },
       get access() { return access.snapshot; },
@@ -421,25 +430,26 @@ export class AirDesktop extends HTMLElement {
       if (item && context) item.run(context);
       return;
     }
-    if (action === 'duplicate') { this.open(state.app, { linkId: state.linkId, forceNew: true }); return; }
+    if (action === 'duplicate') { this.open(state.app, { linkId: state.linkId, forceNew: true, intent: state.intent }); return; }
     if (action === 'browser' && context?.link?.data.url) { window.open(context.link.data.url, '_blank', 'noopener'); return; }
     if (action === 'browser') {
       const url = new URL(location.href);
       url.search = '';
       url.searchParams.set('app', state.app.id);
       if (state.linkId) url.searchParams.set('link', state.linkId);
+      if (state.intent) url.searchParams.set('intent', JSON.stringify(state.intent));
       window.open(url, `airworks-${state.id}`, `popup=yes,width=${Math.max(720, state.width)},height=${Math.max(520, state.height)}`);
       return;
     }
     if (action === 'update' && state.linkId) {
-      const link = this.workspace.find(state.linkId)?.item;
-      if (link && this.settings.overwriteName) link.label = state.title;
-      this.workspace.render();
-      this.workspace.flash(state.linkId);
+      const link = this.workspace.shortcut(state.linkId);
+      if (!link) return;
+      this.workspace.update(link.id, { intent: state.intent, label: this.settings.overwriteName ? state.stateTitle ?? state.title : link.label });
+      this.workspace.flash(link.id);
       return;
     }
     if (action !== 'create') return;
-    const shortcut = this.workspace.addShortcut(state.app, state.title, this.workspace.shortcut(state.linkId)?.data);
+    const shortcut = this.workspace.addShortcut(state.app, state.stateTitle ?? state.title, this.workspace.shortcut(state.linkId)?.data, state.intent);
     if (!shortcut) return;
     state.linkId = shortcut.id;
     this.windows.sync();
@@ -552,7 +562,7 @@ export class AirDesktop extends HTMLElement {
   private profileStore() { return runtime.options.profileStore ?? localProfileStore(); }
 
   private profile(): Profile {
-    const windows = this.windows.windows.map((state): SavedWindow => ({ appId: state.app.id, x: state.x, y: state.y, width: state.width, height: state.height, maximized: state.maximized, snap: state.snap, linkId: state.linkId }));
+    const windows = this.windows.windows.map((state): SavedWindow => ({ appId: state.app.id, x: state.x, y: state.y, width: state.width, height: state.height, maximized: state.maximized, snap: state.snap, linkId: state.linkId, intent: state.intent }));
     return { settings: this.settings, workspace: this.workspace.toJSON(), windows: [...windows, ...this.pendingWindows] };
   }
 
@@ -585,7 +595,7 @@ export class AirDesktop extends HTMLElement {
       const app = runtime.apps.get(saved.appId);
       if (!app || !runtime.canOpen(app)) return true;
       const geometry = saved.width ? { x: saved.x, y: saved.y, width: saved.width, height: saved.height, maximized: saved.maximized, snap: saved.snap } : undefined;
-      this.open(app, { linkId: saved.linkId, forceNew: true, geometry });
+      this.open(app, { linkId: saved.linkId, forceNew: true, geometry, intent: saved.intent });
       return false;
     });
   }

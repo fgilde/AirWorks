@@ -119,8 +119,8 @@ export class Workspace {
     this.host.changed();
   }
 
-  addShortcut(app: AppDefinition, label = app.title, data?: Shortcut['data']): Shortcut | undefined {
-    const shortcut: Shortcut = { id: uid(), kind: 'app', label, appId: app.id, column: 0, row: 0, ...(data && { data }) };
+  addShortcut(app: AppDefinition, label = app.title, data?: Shortcut['data'], intent?: Shortcut['intent']): Shortcut | undefined {
+    const shortcut: Shortcut = { id: uid(), kind: 'app', label, appId: app.id, column: 0, row: 0, ...(data && { data }), ...(intent && { intent }) };
     const index = place(this.pages, shortcut, ROOT_SIZE, this.root.current, MAX_WEBTOPS);
     if (index < 0) return undefined;
     this.render();
@@ -136,7 +136,7 @@ export class Workspace {
     return item?.kind === 'app' ? item : undefined;
   }
 
-  update(id: string, change: Partial<Pick<Shortcut, 'label' | 'data'>>) {
+  update(id: string, change: Partial<Pick<Shortcut, 'label' | 'data' | 'intent'>>) {
     const shortcut = this.shortcut(id);
     if (!shortcut) return;
     Object.assign(shortcut, change);

@@ -1,7 +1,7 @@
 
 export type Cell = { column: number; row: number };
 export type GridSize = { columns: number; rows: number };
-export type Shortcut = Cell & { id: string; kind: 'app'; label: string; appId: string; data?: Record<string, string> };
+export type Shortcut = Cell & { id: string; kind: 'app'; label: string; appId: string; data?: Record<string, string>; intent?: Record<string, string> };
 export type Folder = Cell & { id: string; kind: 'folder'; label: string; pages: Page[] };
 export type GridItem = Shortcut | Folder;
 export type Page = { id: string; items: GridItem[] };
