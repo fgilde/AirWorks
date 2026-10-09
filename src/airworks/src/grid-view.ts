@@ -80,15 +80,23 @@ export class PagedGrid {
     return column >= 0 && column < this.size.columns && row >= 0 && row < this.size.rows ? { column, row } : undefined;
   }
 
-  isCenter(x: number, y: number, cell: Cell) {
-    const rect = this.element.getBoundingClientRect();
-    const { left, top } = this.pixel(cell);
-    const { icon } = this.metrics;
-    const tile = icon * .75;
-    const inset = tile * .2;
-    const tileLeft = rect.left + left + icon * .125;
-    const tileTop = rect.top + top + icon * .125;
-    return x >= tileLeft + inset && x <= tileLeft + tile - inset && y >= tileTop + inset && y <= tileTop + tile - inset;
+  insertionCell(x: number, cell: Cell): Cell {
+    const { left } = this.pixel(cell);
+    const center = this.element.getBoundingClientRect().left + left + this.metrics.icon / 2;
+    if (x <= center) return cell;
+    const next = cell.row * this.size.columns + cell.column + 1;
+    return next < this.size.columns * this.size.rows ? { column: next % this.size.columns, row: Math.floor(next / this.size.columns) } : cell;
+  }
+
+  tileAt(x: number, y: number, exclude?: string) {
+    const page = this.track.children[this.current];
+    for (const element of page?.querySelectorAll<HTMLElement>('[data-item]') ?? []) {
+      if (element.dataset.item === exclude || element.hidden) continue;
+      const rect = element.querySelector('.icon-tile')!.getBoundingClientRect();
+      const inset = rect.width * .08;
+      if (x >= rect.left + inset && x <= rect.right - inset && y >= rect.top + inset && y <= rect.bottom - inset) return element.dataset.item;
+    }
+    return undefined;
   }
 
   preview(page: Page | undefined, plan?: Map<GridItem, Cell>) {

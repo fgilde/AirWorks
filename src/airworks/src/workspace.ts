@@ -12,6 +12,7 @@ const FOLDER_EDGE_SIZE = 44;
 const EDGE_DELAY = 650;
 const FOLDER_OPEN_DELAY = 650;
 const FOLDER_LEAVE_DELAY = 350;
+const SHIFT_DELAY = 220;
 
 export type WorkspaceHost = {
   workArea(): WorkArea;
@@ -40,7 +41,7 @@ export class Workspace {
   private openFolder?: Folder;
   private selectedId?: string;
   private readonly trash = document.createElement('div');
-  private drag?: { source: GridItem; createdPages: Page[]; last: DragSession; armed: boolean; wasInFolder: boolean; deletable: boolean; overTrash?: boolean; target?: DropTarget; hoverFolder?: string; shifted?: { grid: PagedGrid; page: Page } };
+  private drag?: { source: GridItem; createdPages: Page[]; last: DragSession; armed: boolean; wasInFolder: boolean; deletable: boolean; overTrash?: boolean; target?: DropTarget; hoverFolder?: string; shifted?: { grid: PagedGrid; page: Page }; previewKey?: string; pending?: { key: string; target?: DropTarget; timer: number } };
   private edgeTimer?: number;
   private edgeDirection = 0;
   private folderTimer?: number;
@@ -363,20 +364,46 @@ export class Workspace {
     drag.armed ||= direction === 0;
     this.edge(drag.armed ? direction : 0, x, y);
 
-    const cell = grid.cellAt(x, y);
     const page = pages[grid.current];
     const size = folder ? FOLDER_SIZE : ROOT_SIZE;
-    const occupant = cell ? page?.items.find((item) => item.column === cell.column && item.row === cell.row && item !== drag.source) : undefined;
-    const merge = Boolean(occupant && !folder && drag.source.kind === 'app' && grid.isCenter(x, y, cell!));
-    drag.target = cell ? { grid: pages, page: grid.current, cell, size, folder, merge } : undefined;
-    const plan = occupant && !merge && page ? shiftPlan(page, cell!, size, page.items.includes(drag.source) ? drag.source : undefined) : undefined;
-    if (drag.shifted && (drag.shifted.grid !== grid || drag.shifted.page !== page)) drag.shifted.grid.preview(drag.shifted.page);
-    grid.preview(page, plan);
-    drag.shifted = page && { grid, page };
+    const tileId = !folder && drag.source.kind === 'app' ? grid.tileAt(x, y, drag.source.id) : undefined;
+    const mergeWith = tileId ? page?.items.find((item) => item.id === tileId) : undefined;
+    const merge = Boolean(mergeWith);
+    const hovered = grid.cellAt(x, y);
+    const occupied = (at: { column: number; row: number }) => page?.items.some((item) => item.column === at.column && item.row === at.row && item !== drag.source);
+    const cell = mergeWith ? { column: mergeWith.column, row: mergeWith.row } : hovered && occupied(hovered) ? grid.insertionCell(x, hovered) : hovered;
+    const occupant = mergeWith ?? (cell ? page?.items.find((item) => item.column === cell.column && item.row === cell.row && item !== drag.source) : undefined);
+    const target: DropTarget | undefined = cell ? { grid: pages, page: grid.current, cell, size, folder, merge } : undefined;
     this.desktop.querySelectorAll('.drop-target').forEach((element) => element.classList.remove('drop-target'));
-    if (merge) grid.itemElement(occupant!.id)?.classList.add('drop-target');
-    grid.showPlaceholder(merge ? undefined : cell);
     (inFolder ? this.root : this.folderGrid).showPlaceholder(undefined);
+    if (drag.shifted && (drag.shifted.grid !== grid || drag.shifted.page !== page)) {
+      drag.shifted.grid.preview(drag.shifted.page);
+      drag.shifted = undefined;
+      drag.previewKey = undefined;
+    }
+
+    if (merge) {
+      this.cancelPending(drag);
+      drag.target = target;
+      grid.itemElement(mergeWith!.id)?.classList.add('drop-target');
+      grid.showPlaceholder(undefined);
+    } else {
+      const key = cell ? `${grid.current}:${cell.column},${cell.row}` : '';
+      const apply = () => {
+        drag.pending = undefined;
+        drag.previewKey = key;
+        drag.target = target;
+        grid.preview(page, occupant && page ? shiftPlan(page, cell!, size, page.items.includes(drag.source) ? drag.source : undefined) : undefined);
+        drag.shifted = page && { grid, page };
+        grid.showPlaceholder(cell);
+      };
+      if (key === drag.previewKey) { this.cancelPending(drag); drag.target = target; grid.showPlaceholder(cell); }
+      else if (!occupant) { this.cancelPending(drag); apply(); }
+      else if (drag.pending?.key !== key) {
+        this.cancelPending(drag);
+        drag.pending = { key, target, timer: window.setTimeout(apply, SHIFT_DELAY) };
+      }
+    }
 
     const hoverFolder = merge && occupant!.kind === 'folder' ? occupant!.id : undefined;
     if (hoverFolder !== drag.hoverFolder) {
@@ -384,6 +411,11 @@ export class Workspace {
       drag.hoverFolder = hoverFolder;
       if (hoverFolder) this.folderTimer = window.setTimeout(() => { drag.wasInFolder = false; this.openFolderById(hoverFolder); this.retarget(); }, FOLDER_OPEN_DELAY);
     }
+  }
+
+  private cancelPending(drag: NonNullable<Workspace['drag']>) {
+    clearTimeout(drag.pending?.timer);
+    drag.pending = undefined;
   }
 
   private dragOverTrash(drag: NonNullable<Workspace['drag']>, x: number, y: number) {
@@ -395,6 +427,8 @@ export class Workspace {
     drag.hoverFolder = undefined;
     drag.shifted?.grid.preview(drag.shifted.page);
     drag.shifted = undefined;
+    drag.previewKey = undefined;
+    this.cancelPending(drag);
     clearTimeout(this.folderTimer);
     this.edge(0, x, y);
     this.root.showPlaceholder(undefined);
@@ -463,9 +497,11 @@ export class Workspace {
     this.folderGrid.showPlaceholder(undefined);
     this.trash.classList.remove('visible', 'open');
 
+    const target = drag.pending?.target ?? drag.target;
+    this.cancelPending(drag);
     let changed = false;
     if (commit && drag.overTrash) changed = this.delete(drag.source.id);
-    else if (commit && drag.target) changed = drop(this.pages, drag.source, drag.target, `${t('newFolder')}`);
+    else if (commit && target) changed = drop(this.pages, drag.source, target, `${t('newFolder')}`);
     else if (commit && !this.find(drag.source.id) && !this.openFolder) changed = place(this.pages, drag.source, ROOT_SIZE, this.root.current, MAX_WEBTOPS) >= 0;
     this.drag = undefined;
 
