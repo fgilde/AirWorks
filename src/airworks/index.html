@@ -346,6 +346,7 @@ AirWorks.configure({ locale: "fr" });</code></pre>
           <tr><td><code>registerApp(app)</code>, <code>registerApps(apps)</code>, <code>unregisterApp(id)</code></td><td>Manage apps. Duplicate ids throw.</td></tr>
           <tr><td><code>loadRemote(urlOrManifest)</code></td><td>Load a micro-frontend manifest.</td></tr>
           <tr><td><code>openApp(id, intent?)</code></td><td>Open (or focus) an app; returns <code>false</code> if unknown or not permitted.</td></tr>
+          <tr><td><code>setBadge(id, value?)</code></td><td>Count or short mark on the app&#39;s tiles, start menu entry and task buttons (unread items, pending approvals); empty or <code>0</code> removes it.</td></tr>
           <tr><td><code>registerSearchProvider(p)</code>, <code>search(query)</code></td><td>Global content search.</td></tr>
           <tr><td><code>registerPermission(s)</code>, <code>can(id)</code>, <code>access</code>, <code>refreshAccess()</code></td><td>Permissions.</td></tr>
           <tr><td><code>registerAuthProvider(p)</code>, <code>login(id, values?)</code>, <code>logout()</code>, <code>setSession(s)</code>, <code>session</code>, <code>showLogin()</code></td><td>Authentication.</td></tr>

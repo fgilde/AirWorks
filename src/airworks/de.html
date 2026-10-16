@@ -346,6 +346,7 @@ AirWorks.configure({ locale: "fr" });</code></pre>
           <tr><td><code>registerApp(app)</code>, <code>registerApps(apps)</code>, <code>unregisterApp(id)</code></td><td>Apps verwalten. Doppelte IDs werfen einen Fehler.</td></tr>
           <tr><td><code>loadRemote(urlOrManifest)</code></td><td>Micro-Frontend-Manifest laden.</td></tr>
           <tr><td><code>openApp(id, intent?)</code></td><td>App öffnen (oder fokussieren); <code>false</code>, wenn unbekannt oder nicht erlaubt.</td></tr>
+          <tr><td><code>setBadge(id, value?)</code></td><td>Zahl oder kurze Markierung auf Kacheln, Startmenü-Eintrag und Taskleistenknöpfen der App (Ungelesenes, offene Freigaben); leer oder <code>0</code> entfernt sie.</td></tr>
           <tr><td><code>registerSearchProvider(p)</code>, <code>search(query)</code></td><td>Globale Inhaltssuche.</td></tr>
           <tr><td><code>registerPermission(s)</code>, <code>can(id)</code>, <code>access</code>, <code>refreshAccess()</code></td><td>Rechte.</td></tr>
           <tr><td><code>registerAuthProvider(p)</code>, <code>login(id, values?)</code>, <code>logout()</code>, <code>setSession(s)</code>, <code>session</code>, <code>showLogin()</code></td><td>Anmeldung.</td></tr>

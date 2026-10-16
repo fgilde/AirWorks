@@ -36,6 +36,8 @@ export const AirWorks = {
   request: <T = unknown>(path: string, init?: RequestInit) => runtime.access.request<T>(path, init),
   openApp: (appId: string, intent?: Intent) => desktop()?.launch(appId, { intent }) ?? false,
   registerSearchProvider: (provider: SearchProvider) => runtime.registerSearchProvider(provider),
+  /** Shows a count or short mark on the app's shortcuts, start menu entry and task buttons; empty, 0 or undefined removes it. */
+  setBadge: (appId: string, value?: string | number) => runtime.setBadge(appId, value),
   search: (query: string) => runtime.search(query),
   showLogin: () => desktop()?.showLogin(true),
   on(event: AirWorksEvent, handler: (detail: unknown) => void) {

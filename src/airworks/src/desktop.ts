@@ -8,7 +8,7 @@ import { localProfileStore, type Profile, type SavedWindow } from './profile';
 import { runtime } from './runtime';
 import type { Shortcut } from './grid';
 import type { AppContext, AppDefinition, Intent } from './types';
-import { esc, readJson, writeJson } from './util';
+import { badgeHtml, esc, readJson, writeJson } from './util';
 import { WindowManager, type MenuAction, type WindowState, type WorkArea } from './windows';
 import { appearanceOf, MAX_WEBTOPS, Workspace } from './workspace';
 
@@ -57,9 +57,11 @@ export class AirDesktop extends HTMLElement {
     this.renderShell();
 
     const asset = (name: string) => runtime.asset(name);
+    const badge = (appId: string) => runtime.badges.get(appId);
     this.windows = new WindowManager(this.$('.window-layer'), this.$('.tasks'), this.$('.task-preview'), this.$('.snap-indicator'), {
       workArea: () => this.workArea(),
       asset,
+      badge,
       startMaximized: () => this.settings.startMaximized,
       previewDelay: () => this.settings.instantPreview ? 0 : 250,
       taskbarSide: () => this.settings.taskbarPosition,
@@ -76,6 +78,7 @@ export class AirDesktop extends HTMLElement {
       workArea: () => this.workArea(),
       taskbarSide: () => this.settings.taskbarPosition,
       asset,
+      badge,
       app: (id) => runtime.apps.get(id),
       visible: (app) => runtime.canOpen(app),
       open: (app, linkId) => this.open(app, { linkId }),
@@ -100,6 +103,7 @@ export class AirDesktop extends HTMLElement {
     this.renderStartMenu();
 
     runtime.addEventListener('apps', () => this.onAppsChanged());
+    runtime.addEventListener('badges', () => { this.workspace.render(); this.renderStartMenu(); this.windows.renderTasks(); });
     runtime.addEventListener('options', () => { this.applyBrand(); this.renderStartMenu(); });
     runtime.access.addEventListener('change', () => this.onAccessChanged());
     runtime.access.addEventListener('providers', () => { if (this.login.visible) this.login.render(); this.renderStartMenu(); });
@@ -303,7 +307,7 @@ export class AirDesktop extends HTMLElement {
       button.dataset.app = app.id;
       button.title = app.title;
       button.style.setProperty('--accent', app.accent ?? 'var(--system)');
-      button.innerHTML = `<span class="icon-tile"><img src="${esc(runtime.asset(app.icon))}" alt="" /></span><span class="icon-label">${esc(app.title)}</span>`;
+      button.innerHTML = `<span class="icon-tile"><img src="${esc(runtime.asset(app.icon))}" alt="" />${badgeHtml(runtime.badges.get(app.id))}</span><span class="icon-label">${esc(app.title)}</span>`;
       button.addEventListener('click', () => this.open(app));
       this.workspace.dragNew(button, app, () => this.toggleStart(false));
       return button;

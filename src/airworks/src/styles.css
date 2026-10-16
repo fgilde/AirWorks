@@ -439,3 +439,8 @@ button.docs-link { border: 0; cursor: pointer; }
 .login-provider-hint { display: block; margin: -2px 0 8px; }
 .standalone-mode .window-tools, .standalone-mode .resize-handle { display: none !important; }
 .standalone-mode .window-header { cursor: default; }
+
+/* counts on app tiles, start menu entries and task buttons (AirWorks.setBadge) */
+.aw-badge { position: absolute; top: -6px; right: -6px; z-index: 1; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px;
+  background: #d32f2f; color: #fff; font: 600 11px/18px system-ui, sans-serif; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,.4); pointer-events: none; }
+.task-icon .aw-badge { top: -3px; right: -8px; min-width: 16px; height: 16px; line-height: 16px; font-size: 10px; }

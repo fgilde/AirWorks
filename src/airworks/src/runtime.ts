@@ -9,6 +9,7 @@ export class Runtime extends EventTarget {
   readonly apps = new Map<string, AppDefinition>();
   readonly access = new Access(() => this.options);
   readonly searchProviders = new Map<string, SearchProvider>();
+  readonly badges = new Map<string, string>();
   private defaultAssetBase = new URL(iconFolder, import.meta.url).href;
 
   configure(options: AirWorksOptions) {
@@ -34,6 +35,13 @@ export class Runtime extends EventTarget {
 
   unregisterApp(id: string) {
     if (this.apps.delete(id)) this.dispatchEvent(new Event('apps'));
+  }
+
+  setBadge(appId: string, value?: string | number) {
+    const text = value === undefined || value === null || value === '' || value === 0 ? undefined : String(value);
+    if (this.badges.get(appId) === text) return;
+    if (text) this.badges.set(appId, text); else this.badges.delete(appId);
+    this.dispatchEvent(new Event('badges'));
   }
 
   registerSearchProvider(provider: SearchProvider) {

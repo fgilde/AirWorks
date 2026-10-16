@@ -1,6 +1,6 @@
 import { t } from './i18n';
 import type { AppDefinition, Appearance } from './types';
-import { esc } from './util';
+import { badgeHtml, esc } from './util';
 
 export type Rect = { x: number; y: number; width: number; height: number };
 export type WorkArea = { left: number; top: number; right: number; bottom: number; width: number; height: number };
@@ -23,6 +23,7 @@ export type MenuAction = 'update' | 'create' | 'duplicate' | 'browser' | `app:${
 export type WindowHost = {
   workArea(): WorkArea;
   asset(name: string): string;
+  badge(appId: string): string | undefined;
   startMaximized(): boolean;
   previewDelay(): number;
   taskbarSide(): 'top' | 'right' | 'bottom' | 'left';
@@ -460,13 +461,13 @@ export class WindowManager {
     this.sync();
   }
 
-  private renderTasks() {
+  renderTasks() {
     const side = this.host.taskbarSide();
     const vertical = side === 'left' || side === 'right';
     const width = vertical ? 34 : Math.max(66, Math.min(165, this.tasks.clientWidth / Math.max(1, this.windows.length) - 10));
     const top = this.active;
     const ordered = [...this.windows].sort((a, b) => a.id - b.id);
-    this.tasks.innerHTML = ordered.map((state) => `<button class="task ${state === top ? 'active' : ''}" data-window="${state.id}" style="--accent:${esc(state.accent)};width:${width}px" title="${esc(state.title)}"><span class="task-border"></span><span class="task-icon"><img src="${esc(this.host.asset(state.icon))}" alt="" /></span><span class="task-caption">${esc(state.title)}</span><i class="task-close" title="${t('close')}">×</i></button>`).join('');
+    this.tasks.innerHTML = ordered.map((state) => `<button class="task ${state === top ? 'active' : ''}" data-window="${state.id}" style="--accent:${esc(state.accent)};width:${width}px" title="${esc(state.title)}"><span class="task-border"></span><span class="task-icon"><img src="${esc(this.host.asset(state.icon))}" alt="" />${badgeHtml(this.host.badge(state.app.id))}</span><span class="task-caption">${esc(state.title)}</span><i class="task-close" title="${t('close')}">×</i></button>`).join('');
     this.tasks.querySelectorAll<HTMLElement>('.task').forEach((task) => {
       const id = Number(task.dataset.window);
       task.addEventListener('click', (event) => {

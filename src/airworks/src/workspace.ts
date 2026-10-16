@@ -3,7 +3,7 @@ import { drop, FOLDER_SIZE, locate, newPage, place, ROOT_SIZE, shiftPlan, tidy, 
 import { fitLayout, PagedGrid } from './grid-view';
 import { t } from './i18n';
 import type { AppDefinition } from './types';
-import { clamp, esc, uid } from './util';
+import { badgeHtml, clamp, esc, uid } from './util';
 import type { WorkArea } from './windows';
 
 export const MAX_WEBTOPS = 9;
@@ -19,6 +19,7 @@ export type WorkspaceHost = {
   taskbarSide(): string;
   asset(name: string): string;
   app(id: string): AppDefinition | undefined;
+  badge(appId: string): string | undefined;
   visible(app: AppDefinition): boolean;
   open(app: AppDefinition, linkId: string): void;
   dragging(active: boolean): void;
@@ -279,7 +280,7 @@ export class Workspace {
     } else {
       const { accent, icon } = appearanceOf(item, app!);
       element.style.setProperty('--accent', accent);
-      element.innerHTML = `<span class="icon-tile"><img src="${esc(this.host.asset(icon))}" alt="" /></span><span class="icon-label">${esc(item.label)}</span>`;
+      element.innerHTML = `<span class="icon-tile"><img src="${esc(this.host.asset(icon))}" alt="" />${badgeHtml(this.host.badge(item.appId))}</span><span class="icon-label">${esc(item.label)}</span>`;
     }
     element.querySelectorAll('img').forEach((image) => image.addEventListener('error', () => { image.src = this.host.asset(app?.icon ?? 'icon-folder.png'); }, { once: true }));
     element.addEventListener('click', (event) => {
