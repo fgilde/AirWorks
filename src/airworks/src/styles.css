@@ -130,6 +130,38 @@ button { color: inherit; }
 .start-bottom .icon-button { flex: 1; padding: 5px; }
 .start-bottom .icon-button img { width: 18px; height: 18px; }
 
+.launcher-overlay { --aw-launcher-dim: rgba(12,18,28,.5); --aw-launcher-text: #ffffff; --aw-launcher-hover: rgba(255,255,255,.14); --aw-launcher-shadow: 0 1px 3px rgba(0,0,0,.55);
+  position: fixed; z-index: 10025; inset: 0; display: flex; justify-content: center; padding: max(24px, 6vh) 16px 16px; color: var(--aw-launcher-text); background: var(--aw-launcher-dim);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2); backdrop-filter: blur(18px) saturate(1.2); opacity: 0; visibility: hidden; transition: opacity .22s, visibility 0s linear .22s; }
+.launcher-overlay.open { opacity: 1; visibility: visible; transition: opacity .22s; }
+.launcher-panel { width: min(980px, 100%); display: flex; flex-direction: column; gap: 18px; min-height: 0; transform: scale(1.05); transition: transform .22s cubic-bezier(.2,.8,.2,1); }
+.launcher-overlay.open .launcher-panel { transform: none; }
+.launcher-search { position: relative; width: min(440px, 100%); margin: 0 auto; }
+.launcher-search img { position: absolute; left: 13px; top: 50%; width: 18px; height: 18px; transform: translateY(-50%); pointer-events: none; filter: brightness(0) opacity(.5); }
+.launcher-search input { width: 100%; height: 42px; padding: 6px 16px 6px 40px; border: 0; border-radius: 21px; color: #1b2430; background: rgba(255,255,255,.92); box-shadow: 0 4px 18px rgba(0,0,0,.18); font: inherit; outline-color: var(--system); }
+.launcher-apps { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 4px; }
+.launcher-group h3 { margin: 16px 8px 8px; font-size: 13px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; opacity: .85; text-shadow: var(--aw-launcher-shadow); }
+.launcher-group:first-child h3 { margin-top: 0; }
+.launcher-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(116px, 1fr)); gap: 8px; }
+.launcher-overlay .app-icon { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; width: auto; min-height: 0; padding: 14px 4px 10px; border-radius: 12px; color: inherit; }
+.launcher-overlay .app-icon .icon-tile { width: 72px; height: 72px; margin-bottom: 8px; border-radius: 18px; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+.launcher-overlay .app-icon .icon-tile img { border-radius: 0; }
+.launcher-overlay .app-icon .icon-label { font-size: 13px; line-height: 16px; overflow-wrap: anywhere; text-shadow: var(--aw-launcher-shadow); }
+.launcher-overlay .app-icon:hover, .launcher-overlay .app-icon:focus-visible { background: var(--aw-launcher-hover); outline: 0; }
+.launcher-overlay .app-icon:focus-visible { box-shadow: inset 0 0 0 2px var(--aw-launcher-text); }
+.launcher-empty { margin-top: 10vh; text-align: center; opacity: .85; text-shadow: var(--aw-launcher-shadow); }
+.launcher-tools { display: flex; justify-content: center; gap: 2px; align-self: center; overflow: hidden; border-radius: 17px; box-shadow: 0 4px 18px rgba(0,0,0,.18); }
+.launcher-tools .icon-button { width: 44px; height: 34px; }
+@media (prefers-color-scheme: light) {
+  .launcher-overlay { --aw-launcher-dim: rgba(236,240,245,.55); --aw-launcher-text: #1b2430; --aw-launcher-hover: rgba(0,0,0,.08); --aw-launcher-shadow: none; }
+}
+@media (max-width: 720px) {
+  .launcher-overlay { padding-top: 16px; }
+  .launcher-grid { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 4px; }
+  .launcher-overlay .app-icon .icon-tile { width: 56px; height: 56px; border-radius: 14px; }
+  .launcher-overlay .app-icon .icon-label { font-size: 12px; }
+}
+
 .window-layer { position: absolute; inset: 0; pointer-events: none; }
 .air-window { position: fixed; min-width: 360px; min-height: 240px; display: flex; flex-direction: column; background: white; border: 0; border-radius: 0; box-shadow: 0 1px 0 #ccc inset, 0 -1px 0 #ccc inset, -1px 0 #ccc inset, 1px 0 #ccc inset, 0 8px 28px rgba(0,0,0,.25); pointer-events: auto; transform-origin: center; transition: left .2s, top .2s, width .2s, height .2s, opacity .16s, transform .16s; }
 .air-window.minimized { opacity: 0; transform: translateY(-35px) scale(.65); pointer-events: none; visibility: hidden; }
@@ -347,7 +379,7 @@ button { color: inherit; }
 @keyframes save-glow { 0%,100% { filter: none; } 35% { filter: drop-shadow(0 0 14px #fff); } }
 @keyframes home-link-pulse { 0% { transform: scale(0); } 80% { transform: scale(1.2); } 100% { transform: scale(1); } }
 
-.standalone-mode .taskbar, .standalone-mode .start-menu, .standalone-mode .search-panel, .standalone-mode .desktop > .aw-grid, .standalone-mode .navigation-points, .standalone-mode .homescreen-arrow, .standalone-mode .company-image, .standalone-mode .wallpaper-effect { display: none !important; }
+.standalone-mode .taskbar, .standalone-mode .start-menu, .standalone-mode .launcher-overlay, .standalone-mode .search-panel, .standalone-mode .desktop > .aw-grid, .standalone-mode .navigation-points, .standalone-mode .homescreen-arrow, .standalone-mode .company-image, .standalone-mode .wallpaper-effect { display: none !important; }
 .standalone-mode .wallpaper { background: white !important; }
 .standalone-mode .air-window { box-shadow: none; }
 

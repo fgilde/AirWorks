@@ -77,6 +77,7 @@ export type DesktopSettings = {
   wallpaper: string;
   effect: 'none' | 'bubble' | 'snow' | 'starfield' | 'warp' | 'network' | 'aurora';
   systemColor: string;
+  launcher: 'menu' | 'overlay';
 };
 
 export type LoginField = { name: string; label: string; type?: string };
@@ -141,6 +142,8 @@ export type AppDefinition = {
   height?: number;
   requiredPermissions?: string[];
   hidden?: boolean;
+  /** Heading the app is listed under in the full-screen launcher. */
+  group?: string;
   singleInstance?: boolean;
   search?: (query: string, context: SearchContext) => Promise<SearchHit[]> | SearchHit[];
   menu?: WindowMenuItem[];
@@ -174,4 +177,6 @@ export type AirWorksOptions = {
   profileStore?: ProfileStore;
   initialApps?: string[];
   initialShortcuts?: string[];
+  /** 'menu' (default): the start menu slides in from the side; 'overlay': a full-screen app grid over the blurred desktop. Users can switch it in Settings. */
+  launcher?: 'menu' | 'overlay';
 };

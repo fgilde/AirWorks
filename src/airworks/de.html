@@ -88,6 +88,7 @@ npm run build:package  # schreibt ../../package (airworks.js, airworks.css, icon
           <tr><td><code>storageKey</code></td><td>Präfix gespeicherter Profile (Standard <code>airworks</code>; angemeldete Benutzer erhalten <code>airworks.&lt;Benutzer-ID&gt;</code>).</td></tr>
           <tr><td><code>profileStore</code></td><td>Speicherort der Profile (Webtops, Verknüpfungen, Einstellungen, offene Fenster). Standard: localStorage. Siehe <a href="#profiles">Benutzerprofile</a>.</td></tr>
           <tr><td><code>initialShortcuts</code> / <code>initialApps</code></td><td>App-IDs, die beim allerersten Start (ohne gespeicherten Workspace) auf den ersten Webtop gelegt bzw. geöffnet werden.</td></tr>
+          <tr><td><code>launcher</code></td><td>Wie der Startknopf die Apps zeigt: <code>"menu"</code> (Standard) schiebt das Startmenü von der Seite herein; <code>"overlay"</code> öffnet ein Vollbild-Raster großer Icons über dem unscharfen Desktop, mit Suchfeld (Enter startet den ersten Treffer), Überschriften je App-<code>group</code>, Pfeiltasten, Esc oder Klick auf den Hintergrund zum Schließen. Benutzer stellen es unter Einstellungen → Allgemein um.</td></tr>
         </tbody></table>
       </section>
 
@@ -101,6 +102,7 @@ npm run build:package  # schreibt ../../package (airworks.js, airworks.css, icon
   width: 900, height: 600,
   requiredPermissions: ["orders.read"],
   hidden: false,                   // true: nicht in Startmenü/Suche, per API weiterhin öffenbar
+  group: "Vertrieb",               // Überschrift im Vollbild-Starter (launcher: "overlay")
   async render({ host, request, can, onClose, setTitle, session, access }) {
     host.innerHTML = "Lädt …";
     const orders = await request("/orders");

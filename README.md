@@ -17,7 +17,7 @@ npm install github:fgilde/AirWorks
 import { AirWorks } from '@fgilde/airworks';
 import '@fgilde/airworks/style.css';
 
-AirWorks.configure({ initialShortcuts: ['hello'] });
+AirWorks.configure({ initialShortcuts: ['hello'], launcher: 'overlay' }); // 'menu' (default): side start menu; 'overlay': full-screen app grid
 AirWorks.registerApp({ id: 'hello', title: 'Hello', icon: 'fn-dashboard.png', render: () => '<h1>Hello AirWorks</h1>' });
 document.body.append(document.createElement('air-desktop'));
 ```

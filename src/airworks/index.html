@@ -88,6 +88,7 @@ npm run build:package  # writes ../../package (airworks.js, airworks.css, icons,
           <tr><td><code>storageKey</code></td><td>Prefix for saved profiles (default <code>airworks</code>; signed-in users get <code>airworks.&lt;user id&gt;</code>).</td></tr>
           <tr><td><code>profileStore</code></td><td>Where profiles (webtops, shortcuts, settings, open windows) are kept. Default: localStorage. See <a href="#profiles">user profiles</a>.</td></tr>
           <tr><td><code>initialShortcuts</code> / <code>initialApps</code></td><td>App ids placed on the first webtop / opened on the very first start (no saved workspace).</td></tr>
+          <tr><td><code>launcher</code></td><td>How the start button shows the apps: <code>"menu"</code> (default) slides the start menu in from the side; <code>"overlay"</code> opens a full-screen grid of large icons over the blurred desktop, with a search box (Enter starts the first match), headings per app <code>group</code>, arrow keys, Esc or a click on the backdrop to close. Users can switch it under Settings → General.</td></tr>
         </tbody></table>
       </section>
 
@@ -101,6 +102,7 @@ npm run build:package  # writes ../../package (airworks.js, airworks.css, icons,
   width: 900, height: 600,
   requiredPermissions: ["orders.read"],
   hidden: false,                   // true: not in start menu/search, still openable via API
+  group: "Sales",                  // heading in the full-screen launcher (launcher: "overlay")
   async render({ host, request, can, onClose, setTitle, session, access }) {
     host.innerHTML = "Loading …";
     const orders = await request("/orders");

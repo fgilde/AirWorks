@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "build:package": "vite build --config vite.config.lib.ts && tsc -p tsconfig.lib.json && node scripts/copy-package-assets.mjs",
-    "check": "node src/grid.check.ts",
+    "check": "node src/grid.check.ts && node src/launcher.check.ts",
     "preview": "vite preview"
   },
   "devDependencies": {

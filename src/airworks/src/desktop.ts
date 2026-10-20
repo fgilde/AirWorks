@@ -3,6 +3,7 @@ import { createWebLinkApp, editWebLink, WEB_LINK } from './apps/weblink';
 import { createSettingsApp, defaultSettings, wallpaperOf, wallpapers, type Settings } from './apps/settings';
 import { getLocale, setLocale, t } from './i18n';
 import { startEffect } from './effects';
+import { groupApps, matchApps, step } from './launcher';
 import { LoginView } from './login';
 import { localProfileStore, type Profile, type SavedWindow } from './profile';
 import { runtime } from './runtime';
@@ -165,6 +166,18 @@ export class AirDesktop extends HTMLElement {
             ${iconButton('startmenu-logout.png', t('logout'), 'logout')}
           </div>
         </aside>
+        <section class="launcher-overlay" role="dialog" aria-modal="true" aria-label="${t('startMenu')}" aria-hidden="true">
+          <div class="launcher-panel">
+            <label class="launcher-search"><img src="${asset('icon-search.png')}" alt="" /><input type="search" placeholder="${t('searchPlaceholder')}" aria-label="${t('search')}" /></label>
+            <div class="launcher-apps"></div>
+            <div class="launcher-tools">
+              ${iconButton('startmenu-about.png', t('about'), 'about-button')}
+              ${iconButton('fn-help.png', t('docs'), 'docs-button')}
+              ${iconButton('startmenu-settings.png', t('settings'), 'settings-button')}
+              ${iconButton('startmenu-logout.png', t('logout'), 'logout')}
+            </div>
+          </div>
+        </section>
         <div class="search-panel" aria-hidden="true">
           <img src="${asset('icon-search.png')}" alt="" />
           <input type="search" placeholder="${t('searchPlaceholder')}" aria-label="${t('search')}" />
@@ -198,7 +211,7 @@ export class AirDesktop extends HTMLElement {
     company.src = corner ? runtime.asset(corner) : brand.logo;
     this.$<HTMLImageElement>('.start-button img').src = runtime.options.brand?.startIcon ? runtime.asset(runtime.options.brand.startIcon) : brand.logo;
     this.$('.air-shell').ariaLabel = brand.title;
-    this.$('.docs-button').hidden = !runtime.options.docsUrl;
+    this.querySelectorAll<HTMLElement>('.docs-button').forEach((button) => { button.hidden = !runtime.options.docsUrl; });
   }
 
   private brand() {
@@ -211,14 +224,16 @@ export class AirDesktop extends HTMLElement {
   private bindShell() {
     this.$('.start-button').addEventListener('click', (event) => { event.stopPropagation(); this.toggleStart(); });
     document.addEventListener('pointerdown', (event) => {
-      if (this.startOpen && !(event.target as Element).closest('.start-menu, .start-button')) this.toggleStart(false);
+      if (this.startOpen && !(event.target as Element).closest('.start-menu, .start-button, .launcher-overlay')) this.toggleStart(false);
     });
+    this.bindLauncher();
     this.$('.search-button').addEventListener('click', () => this.toggleSearch());
     this.$('.pilot-button').addEventListener('click', () => this.togglePilot());
     this.$('.desktop-button').addEventListener('click', () => this.windows.toggleDesktop());
-    this.$('.settings-button').addEventListener('click', () => { this.settingsApp.show('common'); this.launch(this.settingsApp.id); });
-    this.$('.about-button').addEventListener('click', () => { this.settingsApp.show('about'); this.launch(this.settingsApp.id); });
-    this.$('.docs-button').addEventListener('click', () => this.launch(DOCS));
+    const onClick = (selector: string, handler: () => void) => this.querySelectorAll(selector).forEach((button) => button.addEventListener('click', handler));
+    onClick('.settings-button', () => { this.settingsApp.show('common'); this.launch(this.settingsApp.id); });
+    onClick('.about-button', () => { this.settingsApp.show('about'); this.launch(this.settingsApp.id); });
+    onClick('.docs-button', () => this.launch(DOCS));
     this.querySelectorAll<HTMLElement>('.logout').forEach((button) => button.addEventListener('click', () => {
       if (runtime.access.session) void this.logout(button); else this.showLogin(true);
     }));
@@ -291,27 +306,79 @@ export class AirDesktop extends HTMLElement {
     this.stopEffect = startEffect(this.$('.wallpaper-effect'), this.settings.effect, this.brand().logo);
   }
 
+  private get launcher() { return this.settings.launcher ?? runtime.options.launcher ?? 'menu'; }
+
   private toggleStart(force?: boolean) {
+    const wasOpen = this.startOpen;
     this.startOpen = force ?? !this.startOpen;
-    const menu = this.$('.start-menu');
-    menu.classList.toggle('open', this.startOpen);
-    menu.ariaHidden = String(!this.startOpen);
+    const overlay = this.launcher === 'overlay';
+    const launcher = this.$('.launcher-overlay');
+    ([[this.$('.start-menu'), this.startOpen && !overlay], [launcher, this.startOpen && overlay]] as const).forEach(([element, open]) => {
+      element.classList.toggle('open', open);
+      element.ariaHidden = String(!open);
+    });
     this.$('.start-button').classList.toggle('open', this.startOpen);
+    if (this.startOpen && overlay && !wasOpen) {
+      const input = this.$<HTMLInputElement>('.launcher-search input');
+      input.value = '';
+      this.renderLauncher();
+      this.$('.launcher-apps').scrollTop = 0;
+      // no keyboard popping up over the grid on touch screens
+      if (matchMedia('(pointer: fine)').matches) setTimeout(() => input.focus(), 20);
+    }
+    if (!this.startOpen && launcher.contains(document.activeElement)) this.$('.start-button').focus();
+  }
+
+  private appButton(app: AppDefinition) {
+    const button = document.createElement('button');
+    button.className = 'app-icon';
+    button.dataset.app = app.id;
+    button.title = app.title;
+    button.style.setProperty('--accent', app.accent ?? 'var(--system)');
+    button.innerHTML = `<span class="icon-tile"><img src="${esc(runtime.asset(app.icon))}" alt="" />${badgeHtml(runtime.badges.get(app.id))}</span><span class="icon-label">${esc(app.title)}</span>`;
+    button.addEventListener('click', () => this.open(app));
+    this.workspace.dragNew(button, app, () => this.toggleStart(false));
+    return button;
+  }
+
+  private bindLauncher() {
+    const overlay = this.$('.launcher-overlay');
+    const input = this.$<HTMLInputElement>('.launcher-search input');
+    input.addEventListener('input', () => this.renderLauncher());
+    overlay.addEventListener('click', (event) => { if (!(event.target as Element).closest('button, input')) this.toggleStart(false); });
+    overlay.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') { event.preventDefault(); this.toggleStart(false); return; }
+      const apps = [...overlay.querySelectorAll<HTMLElement>('.launcher-apps .app-icon')];
+      if (event.target === input) {
+        if (event.key === 'Enter') { event.preventDefault(); apps[0]?.click(); }
+        if (event.key === 'ArrowDown' && apps.length) { event.preventDefault(); apps[0].focus(); }
+        return;
+      }
+      const from = apps.indexOf(event.target as HTMLElement);
+      if (from < 0 || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault();
+      const next = step(apps.map((app) => app.getBoundingClientRect()), from, event.key);
+      (next < 0 ? input : apps[next]).focus();
+    });
+  }
+
+  private renderLauncher() {
+    const container = this.$('.launcher-apps');
+    const groups = groupApps(matchApps(runtime.visibleApps(), this.$<HTMLInputElement>('.launcher-search input').value));
+    container.replaceChildren(...groups.map(([group, apps]) => {
+      const section = Object.assign(document.createElement('section'), { className: 'launcher-group' });
+      if (group) section.append(Object.assign(document.createElement('h3'), { textContent: group }));
+      const grid = Object.assign(document.createElement('div'), { className: 'launcher-grid' });
+      grid.append(...apps.map((app) => this.appButton(app)));
+      section.append(grid);
+      return section;
+    }));
+    if (!groups.length) container.append(Object.assign(document.createElement('p'), { className: 'launcher-empty', textContent: t('noApps') }));
   }
 
   private renderStartMenu() {
-    const container = this.$('.start-apps');
-    container.replaceChildren(...runtime.visibleApps().map((app) => {
-      const button = document.createElement('button');
-      button.className = 'app-icon';
-      button.dataset.app = app.id;
-      button.title = app.title;
-      button.style.setProperty('--accent', app.accent ?? 'var(--system)');
-      button.innerHTML = `<span class="icon-tile"><img src="${esc(runtime.asset(app.icon))}" alt="" />${badgeHtml(runtime.badges.get(app.id))}</span><span class="icon-label">${esc(app.title)}</span>`;
-      button.addEventListener('click', () => this.open(app));
-      this.workspace.dragNew(button, app, () => this.toggleStart(false));
-      return button;
-    }));
+    this.$('.start-apps').replaceChildren(...runtime.visibleApps().map((app) => this.appButton(app)));
+    if (this.startOpen && this.launcher === 'overlay') this.renderLauncher();
     const identity = runtime.access.snapshot.identity;
     this.$('.start-user').innerHTML = identity ? `<img src="${esc(runtime.asset('login-user.png'))}" alt=""/><span>${esc(identity.displayName)}</span>` : '';
     const signedIn = Boolean(runtime.access.session);
@@ -494,6 +561,7 @@ export class AirDesktop extends HTMLElement {
     if (existing) { this.settingsApp = existing as typeof this.settingsApp; return; }
     this.settingsApp = createSettingsApp({
       settings: () => this.settings,
+      launcher: () => this.launcher,
       update: (patch) => this.updateSettings(patch),
       asset: (name) => runtime.asset(name),
       access: () => runtime.access.snapshot,

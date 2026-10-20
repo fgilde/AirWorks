@@ -4,6 +4,7 @@ import { esc } from '../util';
 
 export type TaskbarSide = 'top' | 'right' | 'bottom' | 'left';
 import { effects, type Effect } from '../effects';
+import type { Launcher } from '../launcher';
 import type { WallpaperOption } from '../types';
 
 export type { Effect };
@@ -21,6 +22,7 @@ export type Settings = {
   effect: Effect;
   systemColor?: string;
   locale?: string;
+  launcher?: Launcher;
 };
 
 export const defaultSettings: Settings = {
@@ -56,6 +58,7 @@ export const wallpaperOf = (option: WallpaperOption): Wallpaper => ({
 
 export type SettingsHost = {
   settings(): Settings;
+  launcher(): Launcher;
   update(patch: Partial<Settings>): void;
   asset(name: string): string;
   access(): AccessSnapshot;
@@ -80,7 +83,8 @@ export function createSettingsApp(host: SettingsHost): AppDefinition & { show(se
     const access = host.access();
     switch (section) {
       case 'common': return `<h3>${t('general')}</h3>${checkbox('askBeforeClose', 'askBeforeClose')}${checkbox('startMaximized', 'startMaximized')}${checkbox('instantPreview', 'instantPreview')}${checkbox('overwriteName', 'overwriteName')}${checkbox('restoreWindows', 'restoreWindows')}
-        <label><span>${t('language')}</span><select data-locale><option value="en" ${getLocale() === 'en' ? 'selected' : ''}>English</option><option value="de" ${getLocale() === 'de' ? 'selected' : ''}>Deutsch</option></select></label>`;
+        <label><span>${t('language')}</span><select data-locale><option value="en" ${getLocale() === 'en' ? 'selected' : ''}>English</option><option value="de" ${getLocale() === 'de' ? 'selected' : ''}>Deutsch</option></select></label>
+        <label><span>${t('launcher')}</span><select data-launcher>${(['menu', 'overlay'] as const).map((id) => `<option value="${id}" ${host.launcher() === id ? 'selected' : ''}>${t(id === 'menu' ? 'launcherMenu' : 'launcherOverlay')}</option>`).join('')}</select></label>`;
       case 'user': return `<h3>${t('user')}</h3>
         <label><span>${t('displayName')}</span><input value="${esc(access.identity?.displayName ?? t('guest'))}" disabled /></label>
         <label><span>${t('account')}</span><input value="${esc(access.identity?.id ?? '—')}" disabled /></label>
@@ -116,6 +120,7 @@ export function createSettingsApp(host: SettingsHost): AppDefinition & { show(se
     on('[data-section]', 'click', (element) => { section = element.dataset.section as Section; render(root); });
     on('[data-setting]', 'change', (element) => apply({ [element.dataset.setting!]: (element as HTMLInputElement).checked }));
     on('[data-locale]', 'change', (element) => apply({ locale: (element as HTMLSelectElement).value }));
+    on('[data-launcher]', 'change', (element) => apply({ launcher: (element as HTMLSelectElement).value as Launcher }));
     on('[data-wallpaper]', 'click', (element) => apply({ wallpaper: element.dataset.wallpaper!, customWallpaper: undefined }));
     on('[data-effect]', 'click', (element) => apply({ effect: element.dataset.effect as Effect }));
     on('[data-taskbar-position]', 'click', (element) => apply({ taskbarPosition: element.dataset.taskbarPosition as TaskbarSide }));
