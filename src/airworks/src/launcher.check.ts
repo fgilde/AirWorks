@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { groupApps, matchApps, menuStep, step, trapTab } from './launcher.ts';
 
 const apps = [{ title: 'Orders', group: 'Sales' }, { title: 'Files' }, { title: 'Invoices', group: 'Sales' }, { title: 'Users', group: 'Admin' }];
@@ -36,5 +37,9 @@ assert.equal(menuStep(2, 1, 'ArrowDown'), 0);
 assert.equal(menuStep(2, 0, 'ArrowUp'), 1);
 assert.equal(menuStep(2, 0, 'End'), 1);
 assert.equal(menuStep(2, 1, 'Enter'), undefined);
+
+// the About dialog shows VERSION: it follows the package version
+const read = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8');
+assert.equal(read('./desktop.ts').match(/VERSION = '([^']+)'/)?.[1], JSON.parse(read('../../../package.json')).version);
 
 console.log('launcher check passed');

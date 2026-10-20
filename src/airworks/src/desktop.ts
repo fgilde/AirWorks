@@ -13,7 +13,7 @@ import { badgeHtml, esc, readJson, writeJson } from './util';
 import { WindowManager, type MenuAction, type WindowState, type WorkArea } from './windows';
 import { appearanceOf, MAX_WEBTOPS, Workspace } from './workspace';
 
-export const VERSION = '0.4.0';
+export const VERSION = '0.6.0';
 const DOCS = 'airworks.docs';
 const TASKBAR_SIZE = 40;
 
