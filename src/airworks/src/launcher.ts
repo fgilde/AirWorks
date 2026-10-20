@@ -35,3 +35,21 @@ export function step(boxes: Box[], from: number, key: string): number {
   });
   return best;
 }
+
+/** Where Tab moves inside a dialog of `count` focusable elements: the other end at either edge or from outside (index -1), undefined lets the browser move. */
+export function trapTab(count: number, index: number, back: boolean): number | undefined {
+  if (!count) return undefined;
+  if (index < 0) return back ? count - 1 : 0;
+  if (back && index === 0) return count - 1;
+  if (!back && index === count - 1) return 0;
+  return undefined;
+}
+
+/** The menu item an arrow, Home or End key moves to, wrapping around; undefined for other keys. */
+export function menuStep(count: number, index: number, key: string): number | undefined {
+  if (key === 'ArrowDown') return (index + 1) % count;
+  if (key === 'ArrowUp') return (index - 1 + count) % count;
+  if (key === 'Home') return 0;
+  if (key === 'End') return count - 1;
+  return undefined;
+}

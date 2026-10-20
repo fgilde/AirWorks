@@ -22,7 +22,7 @@ export type WorkspaceHost = {
   badge(appId: string): string | undefined;
   visible(app: AppDefinition): boolean;
   open(app: AppDefinition, linkId: string): void;
-  dragging(active: boolean): void;
+  dragging(active: boolean, dropped?: boolean): void;
   removed(ids: string[]): void;
   created(shortcut: Shortcut): void;
   changed(): void;
@@ -516,7 +516,7 @@ export class Workspace {
     this.root.current = clamp(this.root.current, 0, this.pages.length - 1);
     this.folderGrid.current = clamp(this.folderGrid.current, 0, Math.max(0, (this.openFolder?.pages.length ?? 1) - 1));
     this.render();
-    this.host.dragging(false);
+    this.host.dragging(false, commit);
     if (!changed) return;
     if (!drag.overTrash) this.select(drag.source.id);
     this.host.changed();

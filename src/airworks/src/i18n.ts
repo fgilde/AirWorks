@@ -19,7 +19,7 @@ const en = {
   webLink: 'Web link', editWebLink: 'Edit web link', webLinkMissing: 'This web link no longer exists.', embedHint: 'Page stays empty? Some sites do not allow being shown inside other pages.',
   name: 'Name', webAddress: 'Web address', color: 'Color', icon: 'Icon', chooseImage: 'Choose image …', automatic: 'Automatic', ok: 'OK',
   aboutText: 'Browser-native web desktop and micro-frontend shell.', openDocs: 'Open developer documentation', version: 'Version {0}',
-  launcher: 'App launcher', launcherMenu: 'Side menu', launcherOverlay: 'Full screen', noApps: 'No matching apps',
+  launcher: 'App launcher', launcherMenu: 'Side menu', launcherOverlay: 'Full screen', noApps: 'No matching apps', open: 'Open', addToDesktop: 'Add to desktop',
 };
 
 export type MessageKey = keyof typeof en;
@@ -45,7 +45,7 @@ const de: Record<MessageKey, string> = {
   webLink: 'Web-Verknüpfung', editWebLink: 'Web-Verknüpfung bearbeiten', webLinkMissing: 'Diese Web-Verknüpfung existiert nicht mehr.', embedHint: 'Seite bleibt leer? Manche Seiten erlauben keine Anzeige in anderen Seiten.',
   name: 'Name', webAddress: 'Webadresse', color: 'Farbe', icon: 'Icon', chooseImage: 'Bild wählen …', automatic: 'Automatisch', ok: 'OK',
   aboutText: 'Browser-nativer Webdesktop und Micro-Frontend-Shell.', openDocs: 'Entwicklerdokumentation öffnen', version: 'Version {0}',
-  launcher: 'App-Starter', launcherMenu: 'Seitenmenü', launcherOverlay: 'Vollbild', noApps: 'Keine passende App',
+  launcher: 'App-Starter', launcherMenu: 'Seitenmenü', launcherOverlay: 'Vollbild', noApps: 'Keine passende App', open: 'Öffnen', addToDesktop: 'Zum Desktop hinzufügen',
 };
 
 const catalogs: Record<string, Partial<Record<MessageKey, string>>> = { en, de };

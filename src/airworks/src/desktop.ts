@@ -1,9 +1,9 @@
 import { createIdentityApp } from './apps/identity';
 import { createWebLinkApp, editWebLink, WEB_LINK } from './apps/weblink';
 import { createSettingsApp, defaultSettings, wallpaperOf, wallpapers, type Settings } from './apps/settings';
-import { getLocale, setLocale, t } from './i18n';
+import { getLocale, setLocale, t, type MessageKey } from './i18n';
 import { startEffect } from './effects';
-import { groupApps, matchApps, step } from './launcher';
+import { groupApps, matchApps, menuStep, step, trapTab } from './launcher';
 import { LoginView } from './login';
 import { localProfileStore, type Profile, type SavedWindow } from './profile';
 import { runtime } from './runtime';
@@ -29,6 +29,7 @@ export class AirDesktop extends HTMLElement {
   private nextIntent?: Intent;
   private searchAbort?: AbortController;
   private startOpen = false;
+  private iconMenu?: HTMLElement;
   private pilotOpen = false;
   private standalone = false;
   private login!: LoginView;
@@ -83,7 +84,7 @@ export class AirDesktop extends HTMLElement {
       app: (id) => runtime.apps.get(id),
       visible: (app) => runtime.canOpen(app),
       open: (app, linkId) => this.open(app, { linkId }),
-      dragging: (active) => { this.windows.expose(active); if (active) { this.toggleStart(false); this.windows.hidePreview(); } },
+      dragging: (active, dropped) => { this.windows.expose(active); this.launcherDrag(active, dropped); if (active) this.windows.hidePreview(); },
       created: (shortcut) => { if (shortcut.appId === WEB_LINK && !shortcut.data?.url) void this.createWebLink(shortcut); },
       removed: (ids) => {
         this.windows.windows.filter((state) => state.linkId && ids.includes(state.linkId)).forEach((state) => { state.linkId = undefined; });
@@ -166,10 +167,10 @@ export class AirDesktop extends HTMLElement {
             ${iconButton('startmenu-logout.png', t('logout'), 'logout')}
           </div>
         </aside>
-        <section class="launcher-overlay" role="dialog" aria-modal="true" aria-label="${t('startMenu')}" aria-hidden="true">
+        <section class="launcher-overlay" role="dialog" aria-modal="true" aria-label="${t('startMenu')}" aria-hidden="true" tabindex="-1">
           <div class="launcher-panel">
-            <label class="launcher-search"><img src="${asset('icon-search.png')}" alt="" /><input type="search" placeholder="${t('searchPlaceholder')}" aria-label="${t('search')}" /></label>
-            <div class="launcher-apps"></div>
+            <label class="launcher-search"><img src="${asset('icon-search.png')}" alt="" /><input type="search" placeholder="${t('searchPlaceholder')}" aria-label="${t('search')}" aria-controls="aw-launcher-apps" /></label>
+            <div class="launcher-apps" id="aw-launcher-apps"></div>
             <div class="launcher-tools">
               ${iconButton('startmenu-about.png', t('about'), 'about-button')}
               ${iconButton('fn-help.png', t('docs'), 'docs-button')}
@@ -188,7 +189,7 @@ export class AirDesktop extends HTMLElement {
         <div class="snap-indicator"></div>
         <div class="task-preview" aria-hidden="true"></div>
         <nav class="taskbar taskbar-shadow" aria-label="${t('taskbar')}">
-          <button class="start-button" aria-label="${t('startMenu')}" title="${t('startMenu')}"><img alt="" /></button>
+          <button class="start-button" aria-label="${t('startMenu')}" title="${t('startMenu')}" aria-expanded="false"><img alt="" /></button>
           <div class="tasks"></div>
           <div class="task-tools">
             ${iconButton('icon-search.png', t('search'), 'search-button')}
@@ -224,6 +225,7 @@ export class AirDesktop extends HTMLElement {
   private bindShell() {
     this.$('.start-button').addEventListener('click', (event) => { event.stopPropagation(); this.toggleStart(); });
     document.addEventListener('pointerdown', (event) => {
+      if (this.iconMenu && !(event.target as Element).closest('.aw-icon-menu')) this.closeIconMenu();
       if (this.startOpen && !(event.target as Element).closest('.start-menu, .start-button, .launcher-overlay')) this.toggleStart(false);
     });
     this.bindLauncher();
@@ -317,16 +319,75 @@ export class AirDesktop extends HTMLElement {
       element.classList.toggle('open', open);
       element.ariaHidden = String(!open);
     });
-    this.$('.start-button').classList.toggle('open', this.startOpen);
+    const startButton = this.$('.start-button');
+    startButton.classList.toggle('open', this.startOpen);
+    startButton.setAttribute('aria-expanded', String(this.startOpen));
+    startButton.setAttribute('aria-haspopup', overlay ? 'dialog' : 'menu');
+    if (!this.startOpen) { this.closeIconMenu(); launcher.classList.remove('dragging'); }
     if (this.startOpen && overlay && !wasOpen) {
       const input = this.$<HTMLInputElement>('.launcher-search input');
       input.value = '';
       this.renderLauncher();
       this.$('.launcher-apps').scrollTop = 0;
       // no keyboard popping up over the grid on touch screens
-      if (matchMedia('(pointer: fine)').matches) setTimeout(() => input.focus(), 20);
+      setTimeout(() => (matchMedia('(pointer: fine)').matches ? input : launcher).focus(), 20);
     }
-    if (!this.startOpen && launcher.contains(document.activeElement)) this.$('.start-button').focus();
+    if (!this.startOpen && launcher.contains(document.activeElement)) startButton.focus();
+  }
+
+  /** Dragging an icon out of the full-screen launcher fades it so the desktop below takes the drop; a drop closes it, a cancel brings it back. */
+  private launcherDrag(active: boolean, dropped = false) {
+    const overlay = this.$('.launcher-overlay');
+    if (active && this.startOpen && this.launcher === 'overlay') { this.closeIconMenu(); overlay.classList.add('dragging'); return; }
+    if (active) { this.toggleStart(false); return; }
+    if (!overlay.classList.contains('dragging')) return;
+    overlay.classList.remove('dragging');
+    if (dropped) this.toggleStart(false);
+  }
+
+  private addToDesktop(app: AppDefinition) {
+    this.toggleStart(false);
+    if (app.id === WEB_LINK) { void this.createWebLink(); return; }
+    const shortcut = this.workspace.addShortcut(app);
+    if (!shortcut) return;
+    this.windows.expose(true);
+    setTimeout(() => this.workspace.flash(shortcut.id, true), 250);
+    setTimeout(() => this.windows.expose(false), 1400);
+  }
+
+  /** Right click, the menu key or a long press on an app icon: what the icon offers otherwise (open it, drag it onto the desktop) as a menu. */
+  private showIconMenu(button: HTMLElement, app: AppDefinition, x: number, y: number) {
+    this.closeIconMenu();
+    const menu = Object.assign(document.createElement('div'), { className: 'aw-icon-menu' });
+    menu.setAttribute('role', 'menu');
+    menu.ariaLabel = app.title;
+    menu.style.setProperty('--accent', app.accent ?? 'var(--system)');
+    const actions: Array<[MessageKey, string, () => void]> = [['open', app.icon, () => this.open(app)], ['addToDesktop', 'action-createDesktopLink.png', () => this.addToDesktop(app)]];
+    const items = actions.map(([key, icon, run]) => {
+      const item = Object.assign(document.createElement('button'), { className: 'aw-icon-menu-item', innerHTML: `<img src="${esc(runtime.asset(icon))}" alt="" /><span>${esc(t(key))}</span>` });
+      item.setAttribute('role', 'menuitem');
+      item.addEventListener('click', (event) => { event.stopPropagation(); this.closeIconMenu(); run(); });
+      return item;
+    });
+    menu.append(...items);
+    menu.addEventListener('keydown', (event) => {
+      event.stopPropagation();
+      if (event.key === 'Escape' || event.key === 'Tab') { event.preventDefault(); this.closeIconMenu(); button.focus(); return; }
+      const next = menuStep(items.length, items.indexOf(document.activeElement as HTMLButtonElement), event.key);
+      if (next === undefined) return;
+      event.preventDefault();
+      items[next].focus();
+    });
+    (button.closest('.launcher-overlay, .start-menu') ?? this).append(menu);
+    const rect = menu.getBoundingClientRect();
+    Object.assign(menu.style, { left: `${Math.max(4, Math.min(x, innerWidth - rect.width - 4))}px`, top: `${Math.max(4, Math.min(y, innerHeight - rect.height - 4))}px` });
+    this.iconMenu = menu;
+    items[0].focus();
+  }
+
+  private closeIconMenu() {
+    this.iconMenu?.remove();
+    this.iconMenu = undefined;
   }
 
   private appButton(app: AppDefinition) {
@@ -336,8 +397,32 @@ export class AirDesktop extends HTMLElement {
     button.title = app.title;
     button.style.setProperty('--accent', app.accent ?? 'var(--system)');
     button.innerHTML = `<span class="icon-tile"><img src="${esc(runtime.asset(app.icon))}" alt="" />${badgeHtml(runtime.badges.get(app.id))}</span><span class="icon-label">${esc(app.title)}</span>`;
-    button.addEventListener('click', () => this.open(app));
-    this.workspace.dragNew(button, app, () => this.toggleStart(false));
+    let held = false;
+    let timer = 0;
+    button.addEventListener('click', () => { if (!held) this.open(app); });
+    button.addEventListener('contextmenu', (event) => {
+      event.preventDefault();
+      if (held) return; // the long press below opened it already
+      // the menu key fires at 0,0: the menu opens at the icon then
+      const rect = button.getBoundingClientRect();
+      this.showIconMenu(button, app, event.clientX || rect.left + rect.width / 2, event.clientY || rect.top + rect.height / 2);
+    });
+    // a long press opens the menu on touch screens that fire no contextmenu (iOS)
+    button.addEventListener('pointerdown', (down) => {
+      held = false;
+      clearTimeout(timer);
+      if (down.pointerType !== 'touch') return;
+      timer = window.setTimeout(() => { held = true; this.showIconMenu(button, app, down.clientX, down.clientY); }, 550);
+      const stop = (event: PointerEvent) => {
+        if (event.type === 'pointermove' && Math.hypot(event.clientX - down.clientX, event.clientY - down.clientY) < 6) return;
+        clearTimeout(timer);
+        button.removeEventListener('pointermove', stop);
+      };
+      button.addEventListener('pointermove', stop);
+      button.addEventListener('pointerup', stop, { once: true });
+      button.addEventListener('pointercancel', stop, { once: true });
+    });
+    this.workspace.dragNew(button, app);
     return button;
   }
 
@@ -345,9 +430,16 @@ export class AirDesktop extends HTMLElement {
     const overlay = this.$('.launcher-overlay');
     const input = this.$<HTMLInputElement>('.launcher-search input');
     input.addEventListener('input', () => this.renderLauncher());
-    overlay.addEventListener('click', (event) => { if (!(event.target as Element).closest('button, input')) this.toggleStart(false); });
+    overlay.addEventListener('click', (event) => { if (!(event.target as Element).closest('button, input, .aw-icon-menu')) this.toggleStart(false); });
+    this.$('.launcher-apps').addEventListener('scroll', () => this.closeIconMenu(), { passive: true });
     overlay.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') { event.preventDefault(); this.toggleStart(false); return; }
+      if (event.key === 'Tab') {
+        const focusable = [...overlay.querySelectorAll<HTMLElement>('input, button')].filter((element) => element.offsetParent && !element.closest('.aw-icon-menu'));
+        const next = trapTab(focusable.length, focusable.indexOf(document.activeElement as HTMLElement), event.shiftKey);
+        if (next !== undefined) { event.preventDefault(); focusable[next].focus(); }
+        return;
+      }
       const apps = [...overlay.querySelectorAll<HTMLElement>('.launcher-apps .app-icon')];
       if (event.target === input) {
         if (event.key === 'Enter') { event.preventDefault(); apps[0]?.click(); }
@@ -363,6 +455,7 @@ export class AirDesktop extends HTMLElement {
   }
 
   private renderLauncher() {
+    this.closeIconMenu();
     const container = this.$('.launcher-apps');
     const groups = groupApps(matchApps(runtime.visibleApps(), this.$<HTMLInputElement>('.launcher-search input').value));
     container.replaceChildren(...groups.map(([group, apps]) => {
