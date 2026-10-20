@@ -44,12 +44,12 @@ const dashboard = () => `<div class="dashboard-grid">
   <section class="wide"><strong>Trend</strong><div class="bars">${[42, 65, 51, 78, 70, 88, 93, 81, 96, 90, 105, 112].map((height) => `<i style="height:${height}px"></i>`).join('')}</div></section></div>`;
 
 const apps: AppDefinition[] = [
-  { id: 'report', title: 'Report table', icon: 'fn-reporttable.png', accent: '#35496b', width: 930, height: 650, render: reportTable, search: searchReports },
-  { id: 'analysis', title: 'Analysis', icon: 'fn-analysis.png', accent: '#00a4a6', width: 820, height: 590, render: chart },
-  { id: 'planning', title: 'Planning', icon: 'fn-planning.png', accent: '#8d4085', width: 880, height: 620, render: table, requiredPermissions: ['planning.edit'] },
-  { id: 'dashboard', title: 'Dashboard', icon: 'fn-dashboard.png', accent: '#d15c27', width: 900, height: 640, render: dashboard },
-  keyRatiosApp((name) => `${base}icons/${name}`),
-  { id: 'workflow', title: 'Workflow', icon: 'fn-workflow.png', accent: '#a2273b', width: 760, height: 520, render: table, requiredPermissions: ['workflow.use'] },
+  { id: 'report', title: 'Report table', icon: 'fn-reporttable.png', accent: '#35496b', width: 930, height: 650, render: reportTable, search: searchReports, group: 'Reporting' },
+  { id: 'analysis', title: 'Analysis', icon: 'fn-analysis.png', accent: '#00a4a6', width: 820, height: 590, render: chart, group: 'Reporting' },
+  { id: 'planning', title: 'Planning', icon: 'fn-planning.png', accent: '#8d4085', width: 880, height: 620, render: table, requiredPermissions: ['planning.edit'], group: 'Planning' },
+  { id: 'dashboard', title: 'Dashboard', icon: 'fn-dashboard.png', accent: '#d15c27', width: 900, height: 640, render: dashboard, group: 'Reporting' },
+  { ...keyRatiosApp((name) => `${base}icons/${name}`), group: 'Reporting' },
+  { id: 'workflow', title: 'Workflow', icon: 'fn-workflow.png', accent: '#a2273b', width: 760, height: 520, render: table, requiredPermissions: ['workflow.use'], group: 'Planning' },
   {
     id: 'counter', title: 'Counter', icon: 'fn-abcAnalysis.png', accent: '#00777a', width: 420, height: 300,
     render: ({ host, setTitle }) => {
