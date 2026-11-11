@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "name": "AirWorks",
+  "repository": "https://github.com/fgilde/AirWorks",
+  "revision": "main",
+  "output": ".libmentor",
+  "exclude": [
+    "**/*.de.md",
+    "docs/de/**",
+    "**/node_modules/**"
+  ],
+  "examples": [],
+  "guidance": [
+    "This is a source snapshot. Check the installed package version and API evidence before suggesting code."
+  ],
+  "description": "A framework-free web desktop and micro-frontend shell.",
+  "version": "0.6.0-source",
+  "documents": [
+    "README.md",
+    "src/airworks/index.html"
+  ],
+  "sources": [],
+  "typeDoc": [
+    ".libmentor-inputs/typedoc.json"
+  ],
+  "packages": [
+    "@fgilde/airworks"
+  ],
+  "baseUrl": "https://fgilde.github.io/AirWorks/ai"
+}
