@@ -1,0 +1,30 @@
+name: Generate LibMentor documentation
+description: Build validated AI documentation from a versioned source snapshot
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.0.x
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 24
+    - name: Install TypeScript dependencies
+      shell: bash
+      working-directory: src/airworks
+      run: npm ci
+    - name: Extract TypeScript API with TypeDoc
+      shell: bash
+      working-directory: src/airworks
+      run: npx --yes --package typedoc@0.28.14 --package typescript@5.9.3 typedoc --tsconfig tsconfig.lib.json --entryPoints src/index.ts --json ../../.libmentor-inputs/typedoc.json
+    - name: Restore pinned CLI
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: dotnet tool restore
+    - name: Generate and verify
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: |
+        version="$(python3 .github/scripts/libmentor-version.py)"
+        dotnet tool run libmentor -- generate --revision "$GITHUB_SHA" --library-version "$version"
+        dotnet tool run libmentor -- generate --check --revision "$GITHUB_SHA" --library-version "$version"

@@ -34,6 +34,9 @@ jobs:
           GITHUB_PAGES: "true"
       # The ESM library is also served from Pages: https://fgilde.github.io/AirWorks/lib/airworks.js
       - run: npm run build:package && mv ../../package dist/lib
+      - uses: ./.github/actions/libmentor
+      - name: Include AI documentation
+        run: cp -R ../../.libmentor dist/ai
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
